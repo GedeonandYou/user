@@ -457,6 +457,7 @@ def register():
         email = data.get('email', '').strip().lower()
         pseudo = data.get('pseudo', '').strip()
         password = data.get('password', '')
+        device_id = data.get('device_id', '').strip()
 
         # Validation email
         if not email or not is_valid_email(email):
@@ -498,10 +499,10 @@ def register():
         confirmation_token = generate_confirmation_token()
         password_hash = generate_password_hash(password)
         cur.execute(
-            """INSERT INTO users (email, pseudo, password_hash, email_confirmed, confirmation_token, confirmation_sent_at)
-               VALUES (%s, %s, %s, FALSE, %s, CURRENT_TIMESTAMP)
+            """INSERT INTO users (email, pseudo, password_hash, device_id, email_confirmed, confirmation_token, confirmation_sent_at)
+               VALUES (%s, %s, %s, %s, FALSE, %s, CURRENT_TIMESTAMP)
                RETURNING id, pseudo, email""",
-            (email, pseudo, password_hash, confirmation_token)
+            (email, pseudo, password_hash, device_id or None, confirmation_token)
         )
         new_user = cur.fetchone()
         conn.commit()

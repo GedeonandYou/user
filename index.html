@@ -3517,7 +3517,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ pseudo: pseudo, email: email, password: password })
+                    body: JSON.stringify({ pseudo: pseudo, email: email, password: password, device_id: getDeviceId() })
                 });
                 var data = await res.json();
 
