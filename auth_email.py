@@ -2,30 +2,66 @@
 """
 Module d'authentification GEDEON - Interface Lecture Seule
 - Email + Pseudo + Mot de passe
-- Confirmation par email via SendGrid
+- Confirmation par email via SMTP (Gmail)
 """
 
 import os
+import ssl
 import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# SendGrid
-try:
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail
-    SENDGRID_AVAILABLE = True
-except ImportError:
-    SENDGRID_AVAILABLE = False
-    print("SendGrid non installe (pip install sendgrid)")
-
-# Configuration
-SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
-SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@gedeon.app')
+# Configuration SMTP
+SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('SMTP_USER')
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
+SMTP_FROM_EMAIL = os.environ.get('SMTP_FROM_EMAIL') or SMTP_USER
 APP_URL = os.environ.get('APP_URL', 'https://gedeon-readonly.onrender.com')
 
 # Duree de validite du token de confirmation (24h)
 TOKEN_EXPIRY_HOURS = 24
+
+
+def _smtp_available():
+    """Verifie si la config SMTP est presente."""
+    return bool(SMTP_USER and SMTP_PASSWORD)
+
+
+def _send_email(to_email, subject, html_content, text_content=None):
+    """
+    Envoie un email via SMTP.
+    Retourne (success, error_message)
+    """
+    if not _smtp_available():
+        print("SMTP_USER ou SMTP_PASSWORD non configure")
+        return False, "Configuration email manquante"
+
+    msg = MIMEMultipart('alternative')
+    msg['From'] = SMTP_FROM_EMAIL
+    msg['To'] = to_email
+    msg['Subject'] = subject
+
+    if text_content:
+        msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+    msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls(context=context)
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_FROM_EMAIL, to_email, msg.as_string())
+
+        print(f"Email envoye a {to_email}")
+        return True, None
+
+    except Exception as e:
+        print(f"SMTP exception: {e}")
+        return False, str(e)
 
 
 def generate_confirmation_token():
@@ -35,16 +71,9 @@ def generate_confirmation_token():
 
 def send_confirmation_email(email, pseudo, token):
     """
-    Envoie l'email de confirmation via SendGrid.
+    Envoie l'email de confirmation via SMTP.
     Retourne (success, error_message)
     """
-    if not SENDGRID_AVAILABLE:
-        return False, "SendGrid non disponible"
-
-    if not SENDGRID_API_KEY:
-        print("SENDGRID_API_KEY non configure")
-        return False, "Configuration email manquante"
-
     confirmation_link = f"{APP_URL}/confirm?token={token}"
 
     html_content = f"""
@@ -99,37 +128,13 @@ def send_confirmation_email(email, pseudo, token):
     Si vous n'avez pas cree de compte, ignorez cet email.
     """
 
-    message = Mail(
-        from_email=SENDGRID_FROM_EMAIL,
-        to_emails=email,
-        subject='Confirmez votre compte GEDEON',
-        html_content=html_content,
-        plain_text_content=text_content
-    )
-
-    try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-
-        if response.status_code in [200, 201, 202]:
-            print(f"Email de confirmation envoye a {email}")
-            return True, None
-        else:
-            print(f"SendGrid erreur: {response.status_code}")
-            return False, f"Erreur d'envoi ({response.status_code})"
-
-    except Exception as e:
-        print(f"SendGrid exception: {e}")
-        return False, str(e)
+    return _send_email(email, 'Confirmez votre compte GEDEON', html_content, text_content)
 
 
 def send_password_reset_email(email, pseudo, token):
     """
     Envoie l'email de reinitialisation de mot de passe.
     """
-    if not SENDGRID_AVAILABLE or not SENDGRID_API_KEY:
-        return False, "Configuration email manquante"
-
     reset_link = f"{APP_URL}/reset-password?token={token}"
 
     html_content = f"""
@@ -168,19 +173,7 @@ def send_password_reset_email(email, pseudo, token):
     </html>
     """
 
-    message = Mail(
-        from_email=SENDGRID_FROM_EMAIL,
-        to_emails=email,
-        subject='Reinitialisez votre mot de passe GEDEON',
-        html_content=html_content
-    )
-
-    try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        return response.status_code in [200, 201, 202], None
-    except Exception as e:
-        return False, str(e)
+    return _send_email(email, 'Reinitialisez votre mot de passe GEDEON', html_content)
 
 
 def is_valid_email(email):
