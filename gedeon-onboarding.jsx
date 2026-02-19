@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+const { useEffect, useMemo, useState } = React;
 
 const INTERESTS = [
   { id: "sport", emoji: "⚽", label: "Sport" },
@@ -30,12 +31,65 @@ const SPORTS_TYPES = [
   "Sports de combat", "Natation", "Sports extrêmes", "Esport", "Danse", "Autre"
 ];
 
-export default function GedeonOnboarding() {
+function isValidEmail(email) {
+  if (!email) return false;
+  // simple & safe
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase());
+}
+
+async function apiFetch(path, options = {}) {
+  const base = window.GEDEON_API_BASE || ""; // par défaut: même domaine
+  const url = `${base}${path}`;
+  const headers = Object.assign(
+    { "Content-Type": "application/json" },
+    options.headers || {}
+  );
+
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {
+    // ignore parse errors
+  }
+
+  if (!res.ok) {
+    const msg =
+      (data && (data.message || data.error)) ||
+      `Erreur HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.payload = data;
+    throw err;
+  }
+  return data;
+}
+
+function GedeonOnboarding() {
   const [step, setStep] = useState(0);
   const [animating, setAnimating] = useState(false);
-  const [authMethod, setAuthMethod] = useState(null); // 'email' or 'sms'
-  const [authValue, setAuthValue] = useState("");
-  const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
+
+  // AUTH
+  const [authMode, setAuthMode] = useState("register"); // 'register' | 'login'
+  const [email, setEmail] = useState("");
+  const [pseudo, setPseudo] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [authInfo, setAuthInfo] = useState("");
+  const [pendingConfirm, setPendingConfirm] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotInfo, setForgotInfo] = useState("");
+
+  // Onboarding profile
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [profile, setProfile] = useState({
@@ -53,44 +107,202 @@ export default function GedeonOnboarding() {
   });
   const [notifChoice, setNotifChoice] = useState(null);
 
-  const totalSteps = 16;
+  const [saving, setSaving] = useState(false);
+  const totalSteps = 16; // 0..15 (le DONE est l'écran "else")
+
   const progressPercent = Math.min(100, (step / (totalSteps - 1)) * 100);
 
   const goNext = () => {
     setAnimating(true);
     setTimeout(() => {
-      setStep(s => s + 1);
+      setStep((s) => s + 1);
       setAnimating(false);
-    }, 300);
+    }, 250);
   };
 
   const goBack = () => {
     if (step > 0) {
       setAnimating(true);
       setTimeout(() => {
-        setStep(s => s - 1);
+        setStep((s) => s - 1);
         setAnimating(false);
-      }, 300);
+      }, 250);
     }
   };
 
+  // Auto-skip auth if already logged in
+  useEffect(() => {
+    (async () => {
+      try {
+        const chk = await apiFetch("/api/auth/check", { method: "GET" });
+        if (chk && chk.logged_in) {
+          // Si l'utilisateur est déjà connecté, on va directement à l'identité
+          setStep(3);
+        }
+      } catch (e) {
+        // si non dispo, ignore
+      }
+    })();
+  }, []);
+
+  const canProceedStep1 = useMemo(() => {
+    return isValidEmail(email);
+  }, [email]);
+
+  const canSubmitAuth = useMemo(() => {
+    if (!isValidEmail(email)) return false;
+    if (!password || password.length < 4) return false;
+
+    if (authMode === "register") {
+      if (!pseudo || pseudo.trim().length < 2) return false;
+      if (password2 !== password) return false;
+    }
+    return true;
+  }, [authMode, email, password, password2, pseudo]);
+
   const toggleInterest = (id) => {
-    setProfile(p => ({
+    setProfile((p) => ({
       ...p,
       interests: p.interests.includes(id)
-        ? p.interests.filter(i => i !== id)
-        : p.interests.length < 5 ? [...p.interests, id] : p.interests
+        ? p.interests.filter((i) => i !== id)
+        : p.interests.length < 5
+          ? [...p.interests, id]
+          : p.interests,
     }));
   };
 
   const toggleArrayItem = (field, item) => {
-    setProfile(p => ({
+    setProfile((p) => ({
       ...p,
       [field]: p[field].includes(item)
-        ? p[field].filter(i => i !== item)
-        : [...p[field], item]
+        ? p[field].filter((i) => i !== item)
+        : [...p[field], item],
     }));
   };
+
+  async function handleAuthSubmit() {
+    setAuthError("");
+    setAuthInfo("");
+    setForgotInfo("");
+    setPendingConfirm(false);
+
+    setAuthLoading(true);
+    try {
+      if (authMode === "register") {
+        const data = await apiFetch("/api/auth/register", {
+          method: "POST",
+          body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            pseudo: pseudo.trim(),
+            password,
+          }),
+        });
+
+        setAuthInfo(data?.message || "Compte créé. Vérifie ton email pour confirmer.");
+        setPendingConfirm(true);
+        // rester sur step 2 et attendre confirmation
+        return;
+      }
+
+      // login
+      const data = await apiFetch("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      setAuthInfo(data?.message || "Connexion réussie.");
+      // aller à l'identité
+      setStep(3);
+    } catch (e) {
+      const code = e?.payload?.code;
+      if (code === "EMAIL_NOT_CONFIRMED") {
+        setAuthError("Email non confirmé. Clique sur le lien reçu, puis réessaie.");
+        setPendingConfirm(true);
+      } else {
+        setAuthError(e.message || "Erreur d'authentification.");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleResendConfirmation() {
+    setAuthError("");
+    setAuthInfo("");
+    if (!isValidEmail(email)) {
+      setAuthError("Entre un email valide d'abord.");
+      return;
+    }
+    setAuthLoading(true);
+    try {
+      const data = await apiFetch("/api/auth/resend-confirmation", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      setAuthInfo(data?.message || "Email de confirmation renvoyé.");
+      setPendingConfirm(true);
+    } catch (e) {
+      setAuthError(e.message || "Impossible de renvoyer l'email.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    setForgotInfo("");
+    setAuthError("");
+    if (!isValidEmail(email)) {
+      setAuthError("Entre ton email (valide) pour recevoir le lien.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const data = await apiFetch("/api/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      setForgotInfo(data?.message || "Si cet email existe, tu recevras un lien de réinitialisation.");
+    } catch (e) {
+      // backend renvoie souvent success même si email n'existe pas,
+      // mais on gère quand même
+      setForgotInfo("Si cet email existe, tu recevras un lien de réinitialisation.");
+    } finally {
+      setForgotLoading(false);
+    }
+  }
+
+  async function finalizeOnboardingAndGoNext() {
+    setSaving(true);
+    const payload = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      profile,
+      notifChoice,
+      savedAt: new Date().toISOString(),
+    };
+
+    try {
+      localStorage.setItem("gedeon_onboarding", JSON.stringify(payload));
+      localStorage.setItem("gedeon_onboarded", "true");
+
+      // Optionnel: si un endpoint existe un jour, on essaie (sinon 404 => ignore)
+      try {
+        await apiFetch("/api/profile/onboarding", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      } catch (e) {
+        // ignore si non implémenté
+      }
+
+      goNext();
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const PhoneFrame = ({ children }) => (
     <div style={{
@@ -122,33 +334,34 @@ export default function GedeonOnboarding() {
     </div>
   );
 
-  const ProgressBar = () => step > 0 && step < totalSteps - 1 ? (
-    <div style={{
-      padding: "48px 20px 8px",
-      display: "flex", alignItems: "center", gap: 12,
-    }}>
-      {step > 1 && (
-        <button onClick={goBack} style={{
-          background: "none", border: "none", color: "#888", fontSize: 20, cursor: "pointer",
-          padding: 4,
-        }}>←</button>
-      )}
+  const ProgressBar = () =>
+    step > 0 && step < totalSteps - 1 ? (
       <div style={{
-        flex: 1, height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2, overflow: "hidden",
+        padding: "48px 20px 8px",
+        display: "flex", alignItems: "center", gap: 12,
       }}>
+        {step > 0 && (
+          <button onClick={goBack} style={{
+            background: "none", border: "none", color: "#888", fontSize: 20, cursor: "pointer",
+            padding: 4,
+          }}>←</button>
+        )}
         <div style={{
-          height: "100%",
-          width: `${progressPercent}%`,
-          background: "linear-gradient(90deg, #FF6B35, #FFB347)",
-          borderRadius: 2,
-          transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-        }} />
+          flex: 1, height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 2, overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            width: `${progressPercent}%`,
+            background: "linear-gradient(90deg, #FF6B35, #FFB347)",
+            borderRadius: 2,
+            transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          }} />
+        </div>
+        <span style={{ color: "#555", fontSize: 11, fontFamily: "monospace", minWidth: 35 }}>
+          {Math.round(progressPercent)}%
+        </span>
       </div>
-      <span style={{ color: "#555", fontSize: 11, fontFamily: "monospace", minWidth: 35 }}>
-        {Math.round(progressPercent)}%
-      </span>
-    </div>
-  ) : null;
+    ) : null;
 
   const StepContainer = ({ children, centered = false }) => (
     <div style={{
@@ -159,7 +372,7 @@ export default function GedeonOnboarding() {
       justifyContent: centered ? "center" : "flex-start",
       opacity: animating ? 0 : 1,
       transform: animating ? "translateX(30px)" : "translateX(0)",
-      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
       overflowY: "auto",
     }}>
       {children}
@@ -216,18 +429,19 @@ export default function GedeonOnboarding() {
     </button>
   );
 
-  const OptionCard = ({ label, sub, selected, onClick, emoji }) => (
-    <button onClick={onClick} style={{
+  const OptionCard = ({ label, sub, selected, onClick, emoji, disabled }) => (
+    <button onClick={disabled ? undefined : onClick} style={{
       width: "100%",
       padding: "14px 16px",
       background: selected ? "rgba(255,107,53,0.1)" : "rgba(255,255,255,0.03)",
       border: selected ? "1.5px solid #FF6B35" : "1.5px solid rgba(255,255,255,0.06)",
       borderRadius: 14,
       color: "#fff",
-      cursor: "pointer",
+      cursor: disabled ? "not-allowed" : "pointer",
       display: "flex", alignItems: "center", gap: 12,
       transition: "all 0.2s ease",
       textAlign: "left",
+      opacity: disabled ? 0.45 : 1,
     }}>
       {emoji && <span style={{ fontSize: 22 }}>{emoji}</span>}
       <div style={{ flex: 1 }}>
@@ -244,6 +458,25 @@ export default function GedeonOnboarding() {
         {selected && <span style={{ color: "#fff", fontSize: 12 }}>✓</span>}
       </div>
     </button>
+  );
+
+  const Input = (props) => (
+    <input
+      {...props}
+      style={{
+        width: "100%",
+        padding: "14px 16px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1.5px solid rgba(255,255,255,0.1)",
+        borderRadius: 12,
+        color: "#fff",
+        fontSize: 15,
+        outline: "none",
+        boxSizing: "border-box",
+        fontFamily: "'DM Sans', sans-serif",
+        ...(props.style || {})
+      }}
+    />
   );
 
   // STEP 0: Welcome
@@ -269,95 +502,274 @@ export default function GedeonOnboarding() {
           </p>
           <PrimaryButton onClick={goNext}>Commencer →</PrimaryButton>
           <p style={{ color: "#555", fontSize: 11, marginTop: 16 }}>
-            Inscription en 2 minutes
+            Inscription / connexion en 1 minute
           </p>
         </div>
       </StepContainer>
     </PhoneFrame>
   );
 
-  // STEP 1: Auth method
+  // STEP 1: Auth (mode + email)
   if (step === 1) return (
     <PhoneFrame>
       <ProgressBar />
       <StepContainer>
-        <Title sub="Pour te retrouver, c'est tout. Pas de spam, promis.">
-          Comment veux-tu t'identifier ?
+        <Title sub="Ton compte GEDEON est sécurisé par email + mot de passe.">
+          Connexion / inscription
         </Title>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           <OptionCard
-            emoji="✉️" label="Avec mon email" sub="Classique et fiable"
-            selected={authMethod === "email"} onClick={() => setAuthMethod("email")}
+            emoji="✨"
+            label="Créer un compte"
+            sub="Nouveau sur GEDEON"
+            selected={authMode === "register"}
+            onClick={() => setAuthMode("register")}
           />
           <OptionCard
-            emoji="📱" label="Avec mon numéro" sub="Rapide par SMS"
-            selected={authMethod === "sms"} onClick={() => setAuthMethod("sms")}
+            emoji="🔑"
+            label="Se connecter"
+            sub="J'ai déjà un compte"
+            selected={authMode === "login"}
+            onClick={() => setAuthMode("login")}
+          />
+          <OptionCard
+            emoji="📱"
+            label="Par SMS (bientôt)"
+            sub="Non disponible dans le backend actuel"
+            selected={false}
+            disabled={true}
           />
         </div>
-        {authMethod && (
-          <div style={{ marginBottom: 20 }}>
-            <input
-              type={authMethod === "email" ? "email" : "tel"}
-              placeholder={authMethod === "email" ? "ton@email.com" : "+33 6 12 34 56 78"}
-              value={authValue}
-              onChange={e => setAuthValue(e.target.value)}
-              style={{
-                width: "100%", padding: "14px 16px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1.5px solid rgba(255,255,255,0.1)",
-                borderRadius: 12, color: "#fff", fontSize: 15,
-                outline: "none", boxSizing: "border-box",
-                fontFamily: "'DM Sans', sans-serif",
-              }}
-            />
-          </div>
-        )}
+
+        <div style={{ marginBottom: 12 }}>
+          <Input
+            type="email"
+            placeholder="ton@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {!isValidEmail(email) && email.length > 0 && (
+            <p style={{ color: "#FFB347", fontSize: 12, marginTop: 8 }}>
+              Email invalide
+            </p>
+          )}
+        </div>
+
         <div style={{ marginTop: "auto" }}>
-          <PrimaryButton onClick={goNext} disabled={!authMethod || !authValue}>
-            Recevoir mon code
+          <PrimaryButton onClick={goNext} disabled={!canProceedStep1}>
+            Continuer →
           </PrimaryButton>
         </div>
       </StepContainer>
     </PhoneFrame>
   );
 
-  // STEP 2: Verification code
+  // STEP 2: Auth details (password + pseudo if register)
   if (step === 2) return (
     <PhoneFrame>
       <ProgressBar />
       <StepContainer>
-        <Title sub={`Code envoyé à ${authValue || "ton contact"}`}>
-          Entre ton code de vérification
+        <Title sub={authMode === "register" ? "Crée ton compte, puis confirme par lien email." : "Entre ton mot de passe pour te connecter."}>
+          {authMode === "register" ? "Créer ton compte" : "Se connecter"}
         </Title>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", margin: "20px 0 32px" }}>
-          {[0,1,2,3,4,5].map(i => (
-            <input key={i}
-              maxLength={1}
-              value={verificationCode[i]}
-              onChange={e => {
-                const newCode = [...verificationCode];
-                newCode[i] = e.target.value;
-                setVerificationCode(newCode);
-                if (e.target.value && e.target.nextSibling) e.target.nextSibling.focus();
-              }}
-              style={{
-                width: 44, height: 52, textAlign: "center",
-                background: "rgba(255,255,255,0.05)",
-                border: verificationCode[i] ? "1.5px solid #FF6B35" : "1.5px solid rgba(255,255,255,0.1)",
-                borderRadius: 12, color: "#fff", fontSize: 20, fontWeight: 600,
-                outline: "none", fontFamily: "monospace",
-              }}
+
+        {authMode === "register" && (
+          <div style={{ marginBottom: 12 }}>
+            <Input
+              placeholder="Pseudo (ex: marie_lorio)"
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value)}
             />
-          ))}
+            <p style={{ color: "#555", fontSize: 11, marginTop: 8 }}>
+              2 caractères min • lettres/chiffres/_/- acceptés
+            </p>
+          </div>
+        )}
+
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ position: "relative" }}>
+            <Input
+              type={showPwd ? "text" : "password"}
+              placeholder="Mot de passe (min 4 caractères)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={{ paddingRight: 48 }}
+            />
+            <button
+              onClick={() => setShowPwd((s) => !s)}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                color: "#777",
+                cursor: "pointer",
+                padding: 6,
+                fontSize: 12,
+              }}
+              type="button"
+            >
+              {showPwd ? "🙈" : "👁️"}
+            </button>
+          </div>
         </div>
-        <button style={{
-          background: "none", border: "none", color: "#FF6B35", fontSize: 13,
-          cursor: "pointer", marginBottom: 20, fontFamily: "'DM Sans', sans-serif",
-        }}>
-          Renvoyer le code
-        </button>
-        <div style={{ marginTop: "auto" }}>
-          <PrimaryButton onClick={goNext}>Vérifier</PrimaryButton>
+
+        {authMode === "register" && (
+          <div style={{ marginBottom: 12 }}>
+            <Input
+              type={showPwd ? "text" : "password"}
+              placeholder="Confirme le mot de passe"
+              value={password2}
+              onChange={(e) => setPassword2(e.target.value)}
+            />
+            {password2.length > 0 && password2 !== password && (
+              <p style={{ color: "#FFB347", fontSize: 12, marginTop: 8 }}>
+                Les mots de passe ne correspondent pas
+              </p>
+            )}
+          </div>
+        )}
+
+        {(authError || authInfo || forgotInfo) && (
+          <div style={{
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,255,255,0.08)",
+            background: authError
+              ? "rgba(255,80,80,0.08)"
+              : "rgba(255,255,255,0.03)",
+            marginBottom: 14
+          }}>
+            {authError && (
+              <div style={{ color: "#ff8a8a", fontSize: 13, lineHeight: 1.5 }}>
+                {authError}
+              </div>
+            )}
+            {authInfo && (
+              <div style={{ color: "#bbb", fontSize: 13, lineHeight: 1.5 }}>
+                {authInfo}
+              </div>
+            )}
+            {forgotInfo && (
+              <div style={{ color: "#bbb", fontSize: 13, lineHeight: 1.5, marginTop: authError || authInfo ? 10 : 0 }}>
+                {forgotInfo}
+              </div>
+            )}
+          </div>
+        )}
+
+        {pendingConfirm && (
+          <div style={{
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: "1px solid rgba(255,107,53,0.25)",
+            background: "rgba(255,107,53,0.06)",
+            marginBottom: 14
+          }}>
+            <div style={{ color: "#ddd", fontSize: 12, lineHeight: 1.6 }}>
+              ✅ <b>Confirmation email</b> : ouvre le lien reçu, puis clique sur <b>“J’ai confirmé”</b> ci-dessous.
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <button
+                onClick={handleResendConfirmation}
+                disabled={authLoading}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.04)",
+                  color: "#bbb",
+                  cursor: authLoading ? "not-allowed" : "pointer",
+                  fontSize: 12,
+                }}
+                type="button"
+              >
+                Renvoyer l'email
+              </button>
+              <button
+                onClick={async () => {
+                  // tente un login : si confirmé => OK
+                  setAuthMode("login");
+                  await handleAuthSubmit();
+                }}
+                disabled={authLoading}
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,107,53,0.5)",
+                  background: "rgba(255,107,53,0.12)",
+                  color: "#FFB347",
+                  cursor: authLoading ? "not-allowed" : "pointer",
+                  fontSize: 12,
+                }}
+                type="button"
+              >
+                J'ai confirmé
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, marginTop: "auto" }}>
+          <PrimaryButton
+            onClick={handleAuthSubmit}
+            disabled={!canSubmitAuth || authLoading}
+          >
+            {authLoading
+              ? "..."
+              : authMode === "register"
+                ? "Créer le compte"
+                : "Se connecter"}
+          </PrimaryButton>
+        </div>
+
+        <div style={{ marginTop: 10 }}>
+          <button
+            onClick={handleForgotPassword}
+            disabled={forgotLoading}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#FF6B35",
+              fontSize: 13,
+              cursor: forgotLoading ? "not-allowed" : "pointer",
+              padding: 8,
+              fontFamily: "'DM Sans', sans-serif",
+              width: "100%",
+            }}
+            type="button"
+          >
+            {forgotLoading ? "Envoi..." : "Mot de passe oublié ?"}
+          </button>
+
+          <button
+            onClick={() => {
+              setAuthError("");
+              setAuthInfo("");
+              setForgotInfo("");
+              setPendingConfirm(false);
+              setAuthMode((m) => (m === "login" ? "register" : "login"));
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#555",
+              fontSize: 12,
+              cursor: "pointer",
+              padding: 8,
+              width: "100%",
+            }}
+            type="button"
+          >
+            {authMode === "login"
+              ? "Je n'ai pas de compte → Créer un compte"
+              : "J'ai déjà un compte → Se connecter"}
+          </button>
         </div>
       </StepContainer>
     </PhoneFrame>
@@ -368,28 +780,12 @@ export default function GedeonOnboarding() {
     <PhoneFrame>
       <ProgressBar />
       <StepContainer>
-        <Title sub="Ton vrai nom pourra apparaître sur tes billets de concert, réservations sportives ou places d'événements. Les données GEDEON restent strictement privées.">
+        <Title sub="Ces infos restent privées.">
           Comment tu t'appelles ?
         </Title>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-          <input placeholder="Prénom" value={firstName} onChange={e => setFirstName(e.target.value)}
-            style={{
-              width: "100%", padding: "14px 16px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1.5px solid rgba(255,255,255,0.1)",
-              borderRadius: 12, color: "#fff", fontSize: 15, outline: "none",
-              boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif",
-            }}
-          />
-          <input placeholder="Nom" value={lastName} onChange={e => setLastName(e.target.value)}
-            style={{
-              width: "100%", padding: "14px 16px",
-              background: "rgba(255,255,255,0.05)",
-              border: "1.5px solid rgba(255,255,255,0.1)",
-              borderRadius: 12, color: "#fff", fontSize: 15, outline: "none",
-              boxSizing: "border-box", fontFamily: "'DM Sans', sans-serif",
-            }}
-          />
+          <Input placeholder="Prénom" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          <Input placeholder="Nom" value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </div>
         <div style={{
           display: "flex", alignItems: "flex-start", gap: 8,
@@ -452,7 +848,7 @@ export default function GedeonOnboarding() {
           ① Tes passions
         </Title>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-          {INTERESTS.map(i => (
+          {INTERESTS.map((i) => (
             <Chip key={i.id} emoji={i.emoji} label={i.label}
               selected={profile.interests.includes(i.id)}
               onClick={() => toggleInterest(i.id)}
@@ -485,10 +881,10 @@ export default function GedeonOnboarding() {
             { id: "pratiquant", emoji: "🏃", label: "Pratiquant", sub: "Je participe, je cours, je joue" },
             { id: "les-deux", emoji: "⚡", label: "Les deux !", sub: "Spectateur ET pratiquant" },
             { id: "bof", emoji: "😴", label: "Pas trop mon truc", sub: "On passe au suivant" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.sportType === opt.id}
-              onClick={() => setProfile(p => ({ ...p, sportType: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, sportType: opt.id }))}
             />
           ))}
         </div>
@@ -496,7 +892,7 @@ export default function GedeonOnboarding() {
           <>
             <p style={{ color: "#777", fontSize: 12, margin: "8px 0" }}>Sports préférés (optionnel) :</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-              {SPORTS_TYPES.map(s => (
+              {SPORTS_TYPES.map((s) => (
                 <Chip key={s} label={s}
                   selected={profile.sportPrefs.includes(s)}
                   onClick={() => toggleArrayItem("sportPrefs", s)}
@@ -521,7 +917,7 @@ export default function GedeonOnboarding() {
           ③ Quels sons te font vibrer ?
         </Title>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-          {MUSIC_GENRES.map(g => (
+          {MUSIC_GENRES.map((g) => (
             <Chip key={g} label={g}
               selected={profile.musicGenres.includes(g)}
               onClick={() => toggleArrayItem("musicGenres", g)}
@@ -557,10 +953,10 @@ export default function GedeonOnboarding() {
             { id: "famille", emoji: "👨‍👩‍👧", label: "En famille", sub: "Avec les enfants" },
             { id: "amis", emoji: "👯", label: "Entre amis", sub: "La bande, toujours" },
             { id: "depends", emoji: "🔄", label: "Ça dépend", sub: "Un peu de tout" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.companion === opt.id}
-              onClick={() => setProfile(p => ({ ...p, companion: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, companion: opt.id }))}
             />
           ))}
         </div>
@@ -586,10 +982,10 @@ export default function GedeonOnboarding() {
             { id: "100km", emoji: "🚗", label: "Ma région", sub: "Jusqu'à 100 km" },
             { id: "national", emoji: "🗺️", label: "Partout dans le pays", sub: "Si ça vaut le déplacement" },
             { id: "international", emoji: "✈️", label: "Sans frontières !", sub: "Le monde est mon terrain de jeu" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.distance === opt.id}
-              onClick={() => setProfile(p => ({ ...p, distance: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, distance: opt.id }))}
             />
           ))}
         </div>
@@ -614,10 +1010,10 @@ export default function GedeonOnboarding() {
             { id: "30", emoji: "💰", label: "Jusqu'à 30€", sub: "Raisonnable" },
             { id: "100", emoji: "💳", label: "Jusqu'à 100€", sub: "Pour les bonnes occasions" },
             { id: "nolimit", emoji: "✨", label: "Le prix n'est pas un frein", sub: "Si c'est bien, j'y vais" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.budget === opt.id}
-              onClick={() => setProfile(p => ({ ...p, budget: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, budget: opt.id }))}
             />
           ))}
         </div>
@@ -642,10 +1038,10 @@ export default function GedeonOnboarding() {
             { id: "weekly", emoji: "📅", label: "Chaque semaine", sub: "C'est un rituel" },
             { id: "multi", emoji: "🔥", label: "Plusieurs fois par semaine", sub: "Je ne tiens pas en place" },
             { id: "spontaneous", emoji: "🎲", label: "Quand l'envie me prend", sub: "Pas de planning" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.frequency === opt.id}
-              onClick={() => setProfile(p => ({ ...p, frequency: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, frequency: opt.id }))}
             />
           ))}
         </div>
@@ -671,7 +1067,7 @@ export default function GedeonOnboarding() {
             { id: "soir", emoji: "🌃", label: "En soirée", sub: "Après 19h" },
             { id: "vacances", emoji: "🏖️", label: "Vacances / jours fériés", sub: "Quand j'ai du temps" },
             { id: "anytime", emoji: "⏰", label: "Tout le temps !", sub: "Je suis toujours dispo" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.when.includes(opt.id)}
               onClick={() => toggleArrayItem("when", opt.id)}
@@ -698,10 +1094,10 @@ export default function GedeonOnboarding() {
             { id: "discover", emoji: "🧭", label: "Explorateur", sub: "Surprends-moi ! Nouveautés, découvertes" },
             { id: "routine", emoji: "❤️", label: "Fidèle", sub: "Mes artistes, mes équipes, mes lieux" },
             { id: "both", emoji: "⚖️", label: "Les deux", sub: "Un mix de nouveauté et de valeurs sûres" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.discovery === opt.id}
-              onClick={() => setProfile(p => ({ ...p, discovery: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, discovery: opt.id }))}
             />
           ))}
         </div>
@@ -725,10 +1121,10 @@ export default function GedeonOnboarding() {
             { id: "big", emoji: "🏟️", label: "En grand", sub: "Stades, festivals, concerts géants" },
             { id: "intimate", emoji: "🎪", label: "Intimiste", sub: "Petites jauges, ambiance cosy" },
             { id: "both", emoji: "🎭", label: "Les deux me vont", sub: "Ça dépend du moment" },
-          ].map(opt => (
+          ].map((opt) => (
             <OptionCard key={opt.id} {...opt}
               selected={profile.ambiance === opt.id}
-              onClick={() => setProfile(p => ({ ...p, ambiance: opt.id }))}
+              onClick={() => setProfile((p) => ({ ...p, ambiance: opt.id }))}
             />
           ))}
         </div>
@@ -741,7 +1137,7 @@ export default function GedeonOnboarding() {
     </PhoneFrame>
   );
 
-  // STEP 15: Notifications
+  // STEP 15: Notifications (save here)
   if (step === 15) return (
     <PhoneFrame>
       <ProgressBar />
@@ -755,7 +1151,7 @@ export default function GedeonOnboarding() {
             Notifications
           </h2>
           <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 32px" }}>
-            Pas obligatoire, mais fortement conseillé pour ne pas rater un événement majeur près de chez toi !
+            Pas obligatoire, mais conseillé pour ne pas rater un événement près de chez toi !
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
             <OptionCard emoji="✅" label="Oui, m'alerter" sub="Événements majeurs + mes favoris uniquement"
@@ -763,15 +1159,18 @@ export default function GedeonOnboarding() {
             <OptionCard emoji="⏳" label="Plus tard" sub="Tu pourras activer dans les réglages"
               selected={notifChoice === false} onClick={() => setNotifChoice(false)} />
           </div>
-          <PrimaryButton onClick={goNext} disabled={notifChoice === null}>
-            Finaliser
+          <PrimaryButton
+            onClick={finalizeOnboardingAndGoNext}
+            disabled={notifChoice === null || saving}
+          >
+            {saving ? "Enregistrement..." : "Finaliser"}
           </PrimaryButton>
         </div>
       </StepContainer>
     </PhoneFrame>
   );
 
-  // STEP 16: Welcome / Done
+  // DONE SCREEN
   return (
     <PhoneFrame>
       <StepContainer centered>
@@ -789,7 +1188,7 @@ export default function GedeonOnboarding() {
             Bienvenue{firstName ? ` ${firstName}` : ""} !
           </h2>
           <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 32px" }}>
-            Ton profil est prêt. GEDEON va maintenant te proposer des événements sur mesure, partout dans le monde.
+            Ton profil est prêt. GEDEON va maintenant te proposer des événements sur mesure.
           </p>
 
           <div style={{
@@ -801,8 +1200,8 @@ export default function GedeonOnboarding() {
               Ton profil
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {profile.interests.map(id => {
-                const interest = INTERESTS.find(i => i.id === id);
+              {profile.interests.map((id) => {
+                const interest = INTERESTS.find((i) => i.id === id);
                 return interest ? (
                   <span key={id} style={{
                     padding: "4px 10px", background: "rgba(255,107,53,0.12)",
@@ -815,11 +1214,36 @@ export default function GedeonOnboarding() {
             </div>
           </div>
 
-          <PrimaryButton onClick={() => setStep(0)}>
+          <PrimaryButton onClick={() => (window.location.href = "/")}>
             Explorer GEDEON →
           </PrimaryButton>
+
+          <button
+            onClick={() => setStep(0)}
+            style={{
+              marginTop: 10,
+              background: "none",
+              border: "none",
+              color: "#555",
+              fontSize: 12,
+              cursor: "pointer",
+              padding: 8,
+              width: "100%",
+            }}
+            type="button"
+          >
+            Refaire l'onboarding
+          </button>
         </div>
       </StepContainer>
     </PhoneFrame>
   );
 }
+
+// Mount
+(function mount() {
+  const el = document.getElementById("root");
+  if (!el) return;
+  const root = ReactDOM.createRoot(el);
+  root.render(<GedeonOnboarding />);
+})();
