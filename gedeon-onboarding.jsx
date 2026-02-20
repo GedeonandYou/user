@@ -1,6 +1,9 @@
 /* global React, ReactDOM */
 const { useEffect, useMemo, useState } = React
 
+// -----------------------------
+// Data
+// -----------------------------
 const INTERESTS = [
   { id: "sport", emoji: "⚽", label: "Sport" },
   { id: "musique", emoji: "🎵", label: "Musique & Concerts" },
@@ -51,6 +54,9 @@ const SPORTS_TYPES = [
   "Autre",
 ]
 
+// -----------------------------
+// Utils
+// -----------------------------
 function isValidEmail(email) {
   if (!email) return false
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim().toLowerCase())
@@ -109,11 +115,393 @@ async function apiFetch(path, options = {}) {
   return data
 }
 
+// -----------------------------
+// UI Components (IMPORTANT: outside component)
+// -----------------------------
+function AppShell({ children, isNarrow }) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        padding: isNarrow ? 12 : 24,
+        boxSizing: "border-box",
+        background:
+          "radial-gradient(1200px 600px at 50% 10%, rgba(255,107,53,0.12), transparent 60%), linear-gradient(180deg, #070712, #05050c 65%, #04040a)",
+        display: "flex",
+        alignItems: isNarrow ? "stretch" : "center",
+        justifyContent: "center",
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function PhoneFrame({
+  children,
+  isNarrow,
+  isTablet,
+  frameHeightMobile,
+  frameHeightWide,
+  frameWidthWide,
+}) {
+  if (isNarrow) {
+    return (
+      <AppShell isNarrow={isNarrow}>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            margin: "20px auto",
+            background: "#1a1a2e",
+            borderRadius: 40,
+            padding: "12px",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.4)",
+            position: "relative",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              top: 12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 120,
+              height: 28,
+              background: "#111",
+              borderRadius: "0 0 16px 16px",
+              zIndex: 10,
+              opacity: 0.95,
+              pointerEvents: "none", // ✅ ne bloque jamais la saisie / taps
+            }}
+          />
+          <div
+            style={{
+              background: "#0d0d1a",
+              borderRadius: 30,
+              minHeight: frameHeightMobile,
+              maxHeight: frameHeightMobile,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              position: "relative",
+            }}
+          >
+            {children}
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
+
+  return (
+    <AppShell isNarrow={isNarrow}>
+      <div
+        style={{
+          width: "100%",
+          maxWidth: frameWidthWide,
+          background: "rgba(255,255,255,0.03)",
+          borderRadius: 26,
+          padding: isTablet ? 12 : 14,
+          boxShadow:
+            "0 28px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)",
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        <div
+          style={{
+            background: "#0d0d1a",
+            borderRadius: 20,
+            minHeight: frameHeightWide,
+            maxHeight: frameHeightWide,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            position: "relative",
+          }}
+        >
+          {children}
+        </div>
+      </div>
+    </AppShell>
+  )
+}
+
+function ProgressBar({ step, totalSteps, progressPercent, isNarrow, goBack }) {
+  if (!(step > 0 && step < totalSteps - 1)) return null
+  return (
+    <div
+      style={{
+        padding: isNarrow ? "48px 20px 8px" : "22px 24px 10px",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        borderBottom: isNarrow ? "none" : "1px solid rgba(255,255,255,0.05)",
+      }}
+    >
+      {step > 0 && (
+        <button
+          onClick={goBack}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#888",
+            fontSize: 20,
+            cursor: "pointer",
+            padding: 6,
+            borderRadius: 10,
+          }}
+          type="button"
+        >
+          ←
+        </button>
+      )}
+      <div
+        style={{
+          flex: 1,
+          height: 3,
+          background: "rgba(255,255,255,0.08)",
+          borderRadius: 2,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${progressPercent}%`,
+            background: "linear-gradient(90deg, #FF6B35, #FFB347)",
+            borderRadius: 2,
+            transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+        />
+      </div>
+      <span
+        style={{
+          color: "#555",
+          fontSize: 11,
+          fontFamily: "monospace",
+          minWidth: 38,
+          textAlign: "right",
+        }}
+      >
+        {Math.round(progressPercent)}%
+      </span>
+    </div>
+  )
+}
+
+function StepContainer({ children, centered = false, isNarrow, animating }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        padding: isNarrow ? "16px 24px 24px" : "22px 28px 28px",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: centered ? "center" : "flex-start",
+        opacity: animating ? 0 : 1,
+        transform: animating ? "translateX(18px)" : "translateX(0)",
+        transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
+        overflowY: "auto",
+        boxSizing: "border-box",
+        width: "100%",
+        maxWidth: isNarrow ? "none" : 620,
+        margin: isNarrow ? "0" : "0 auto",
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function Title({ children, sub, isNarrow }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <h2
+        style={{
+          color: "#fff",
+          fontSize: isNarrow ? 22 : 26,
+          fontWeight: 750,
+          margin: 0,
+          lineHeight: 1.2,
+          fontFamily: "'DM Sans', -apple-system, sans-serif",
+          letterSpacing: -0.2,
+        }}
+      >
+        {children}
+      </h2>
+      {sub && (
+        <p
+          style={{
+            color: "#777",
+            fontSize: isNarrow ? 13 : 14,
+            margin: "8px 0 0",
+            lineHeight: 1.55,
+          }}
+        >
+          {sub}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function PrimaryButton({ children, onClick, disabled, isNarrow }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: "100%",
+        padding: isNarrow ? "15px 18px" : "16px 18px",
+        background: disabled
+          ? "rgba(255,255,255,0.06)"
+          : "linear-gradient(135deg, #FF6B35, #E8530E)",
+        color: disabled ? "#555" : "#fff",
+        border: "none",
+        borderRadius: 14,
+        fontSize: isNarrow ? 15 : 16,
+        fontWeight: 650,
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "all 0.2s ease",
+        fontFamily: "'DM Sans', -apple-system, sans-serif",
+        letterSpacing: 0.3,
+      }}
+      type="button"
+    >
+      {children}
+    </button>
+  )
+}
+
+function Chip({ label, selected, onClick, emoji }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "9px 14px",
+        background: selected
+          ? "rgba(255,107,53,0.15)"
+          : "rgba(255,255,255,0.04)",
+        border: selected
+          ? "1.5px solid #FF6B35"
+          : "1.5px solid rgba(255,255,255,0.08)",
+        borderRadius: 20,
+        color: selected ? "#FFB347" : "#aaa",
+        fontSize: 13,
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        fontFamily: "'DM Sans', -apple-system, sans-serif",
+        whiteSpace: "nowrap",
+      }}
+      type="button"
+    >
+      {emoji && <span style={{ fontSize: 15 }}>{emoji}</span>}
+      {label}
+    </button>
+  )
+}
+
+function OptionCard({ label, sub, selected, onClick, emoji, disabled, isNarrow }) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      style={{
+        width: "100%",
+        padding: isNarrow ? "14px 16px" : "16px 18px",
+        background: selected
+          ? "rgba(255,107,53,0.1)"
+          : "rgba(255,255,255,0.03)",
+        border: selected
+          ? "1.5px solid #FF6B35"
+          : "1.5px solid rgba(255,255,255,0.06)",
+        borderRadius: 14,
+        color: "#fff",
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        transition: "all 0.2s ease",
+        textAlign: "left",
+        opacity: disabled ? 0.45 : 1,
+      }}
+      type="button"
+    >
+      {emoji && <span style={{ fontSize: 22 }}>{emoji}</span>}
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          {label}
+        </div>
+        {sub && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "#666",
+              marginTop: 2,
+              lineHeight: 1.35,
+            }}
+          >
+            {sub}
+          </div>
+        )}
+      </div>
+      <div
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          border: selected ? "2px solid #FF6B35" : "2px solid #333",
+          background: selected ? "#FF6B35" : "transparent",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.2s ease",
+        }}
+      >
+        {selected && <span style={{ color: "#fff", fontSize: 12 }}>✓</span>}
+      </div>
+    </button>
+  )
+}
+
+function TextInput({ isNarrow, style, ...props }) {
+  return (
+    <input
+      {...props}
+      style={{
+        width: "100%",
+        padding: isNarrow ? "14px 16px" : "15px 16px",
+        background: "rgba(255,255,255,0.05)",
+        border: "1.5px solid rgba(255,255,255,0.1)",
+        borderRadius: 12,
+        color: "#fff",
+        fontSize: 15,
+        outline: "none",
+        boxSizing: "border-box",
+        fontFamily: "'DM Sans', sans-serif",
+        ...(style || {}),
+      }}
+    />
+  )
+}
+
+// -----------------------------
+// Main Component
+// -----------------------------
 function GedeonOnboarding() {
   const vp = useViewport()
-  const isNarrow = vp.w < 560 // mobile / petit écran
+  const isNarrow = vp.w < 560
   const isTablet = vp.w >= 560 && vp.w < 980
-  const isDesktop = vp.w >= 980
 
   const [step, setStep] = useState(0)
   const [animating, setAnimating] = useState(false)
@@ -348,371 +736,24 @@ function GedeonOnboarding() {
     }
   }
 
-  // --- Responsive layout (mobile phone vs desktop card) ---
+  // Responsive sizes
   const frameHeightMobile = Math.min(720, Math.max(560, vp.h - 40))
   const frameHeightWide = Math.min(860, Math.max(620, vp.h - 56))
   const frameWidthWide = Math.min(980, Math.max(680, vp.w - 40))
 
-  const AppShell = ({ children }) => (
-    <div
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        padding: isNarrow ? 12 : 24,
-        boxSizing: "border-box",
-        background:
-          "radial-gradient(1200px 600px at 50% 10%, rgba(255,107,53,0.12), transparent 60%), linear-gradient(180deg, #070712, #05050c 65%, #04040a)",
-        display: "flex",
-        alignItems: isNarrow ? "stretch" : "center",
-        justifyContent: "center",
-      }}
-    >
-      {children}
-    </div>
-  )
-
-  const PhoneFrame = ({ children }) => {
-    if (isNarrow) {
-      // Mobile: rendu "téléphone"
-      return (
-        <AppShell>
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 420,
-              margin: "20px auto",
-              background: "#1a1a2e",
-              borderRadius: 40,
-              padding: "12px",
-              boxShadow: "0 25px 60px rgba(0,0,0,0.4)", // ✅ plus de contour
-              position: "relative",
-            }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                top: 12,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 120,
-                height: 28,
-                background: "#111",
-                borderRadius: "0 0 16px 16px",
-                zIndex: 10,
-                opacity: 0.95,
-              }}
-            />
-            <div
-              style={{
-                background: "#0d0d1a",
-                borderRadius: 30,
-                minHeight: frameHeightMobile,
-                maxHeight: frameHeightMobile,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-                position: "relative",
-              }}
-            >
-              {children}
-            </div>
-          </div>
-        </AppShell>
-      )
-    }
-
-    // Desktop / tablette: carte large
-    return (
-      <AppShell>
-        <div
-          style={{
-            width: "100%",
-            maxWidth: frameWidthWide,
-            background: "rgba(255,255,255,0.03)",
-            borderRadius: 26,
-            padding: isTablet ? 12 : 14,
-            boxShadow:
-              "0 28px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)",
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <div
-            style={{
-              background: "#0d0d1a",
-              borderRadius: 20,
-              minHeight: frameHeightWide,
-              maxHeight: frameHeightWide,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              position: "relative",
-            }}
-          >
-            {children}
-          </div>
-        </div>
-      </AppShell>
-    )
-  }
-
-  const ProgressBar = () =>
-    step > 0 && step < totalSteps - 1 ? (
-      <div
-        style={{
-          padding: isNarrow ? "48px 20px 8px" : "22px 24px 10px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          borderBottom: isNarrow ? "none" : "1px solid rgba(255,255,255,0.05)",
-        }}
-      >
-        {step > 0 && (
-          <button
-            onClick={goBack}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#888",
-              fontSize: 20,
-              cursor: "pointer",
-              padding: 6,
-              borderRadius: 10,
-            }}
-            type="button"
-          >
-            ←
-          </button>
-        )}
-        <div
-          style={{
-            flex: 1,
-            height: 3,
-            background: "rgba(255,255,255,0.08)",
-            borderRadius: 2,
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: `${progressPercent}%`,
-              background: "linear-gradient(90deg, #FF6B35, #FFB347)",
-              borderRadius: 2,
-              transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-            }}
-          />
-        </div>
-        <span
-          style={{
-            color: "#555",
-            fontSize: 11,
-            fontFamily: "monospace",
-            minWidth: 38,
-            textAlign: "right",
-          }}
-        >
-          {Math.round(progressPercent)}%
-        </span>
-      </div>
-    ) : null
-
-  const StepContainer = ({ children, centered = false }) => (
-    <div
-      style={{
-        flex: 1,
-        padding: isNarrow ? "16px 24px 24px" : "22px 28px 28px",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: centered ? "center" : "flex-start",
-        opacity: animating ? 0 : 1,
-        transform: animating ? "translateX(18px)" : "translateX(0)",
-        transition: "all 0.22s cubic-bezier(0.4, 0, 0.2, 1)",
-        overflowY: "auto",
-        boxSizing: "border-box",
-        width: "100%",
-        maxWidth: isNarrow ? "none" : 620,
-        margin: isNarrow ? "0" : "0 auto",
-      }}
-    >
-      {children}
-    </div>
-  )
-
-  const Title = ({ children, sub }) => (
-    <div style={{ marginBottom: 18 }}>
-      <h2
-        style={{
-          color: "#fff",
-          fontSize: isNarrow ? 22 : 26,
-          fontWeight: 750,
-          margin: 0,
-          lineHeight: 1.2,
-          fontFamily: "'DM Sans', -apple-system, sans-serif",
-          letterSpacing: -0.2,
-        }}
-      >
-        {children}
-      </h2>
-      {sub && (
-        <p
-          style={{
-            color: "#777",
-            fontSize: isNarrow ? 13 : 14,
-            margin: "8px 0 0",
-            lineHeight: 1.55,
-          }}
-        >
-          {sub}
-        </p>
-      )}
-    </div>
-  )
-
-  const PrimaryButton = ({ children, onClick, disabled }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: "100%",
-        padding: isNarrow ? "15px 18px" : "16px 18px",
-        background: disabled
-          ? "rgba(255,255,255,0.06)"
-          : "linear-gradient(135deg, #FF6B35, #E8530E)",
-        color: disabled ? "#555" : "#fff",
-        border: "none",
-        borderRadius: 14,
-        fontSize: isNarrow ? 15 : 16,
-        fontWeight: 650,
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "all 0.2s ease",
-        fontFamily: "'DM Sans', -apple-system, sans-serif",
-        letterSpacing: 0.3,
-      }}
-      type="button"
-    >
-      {children}
-    </button>
-  )
-
-  const Chip = ({ label, selected, onClick, emoji }) => (
-    <button
-      onClick={onClick}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "9px 14px",
-        background: selected
-          ? "rgba(255,107,53,0.15)"
-          : "rgba(255,255,255,0.04)",
-        border: selected
-          ? "1.5px solid #FF6B35"
-          : "1.5px solid rgba(255,255,255,0.08)",
-        borderRadius: 20,
-        color: selected ? "#FFB347" : "#aaa",
-        fontSize: 13,
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        fontFamily: "'DM Sans', -apple-system, sans-serif",
-        whiteSpace: "nowrap",
-      }}
-      type="button"
-    >
-      {emoji && <span style={{ fontSize: 15 }}>{emoji}</span>}
-      {label}
-    </button>
-  )
-
-  const OptionCard = ({ label, sub, selected, onClick, emoji, disabled }) => (
-    <button
-      onClick={disabled ? undefined : onClick}
-      style={{
-        width: "100%",
-        padding: isNarrow ? "14px 16px" : "16px 18px",
-        background: selected
-          ? "rgba(255,107,53,0.1)"
-          : "rgba(255,255,255,0.03)",
-        border: selected
-          ? "1.5px solid #FF6B35"
-          : "1.5px solid rgba(255,255,255,0.06)",
-        borderRadius: 14,
-        color: "#fff",
-        cursor: disabled ? "not-allowed" : "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        transition: "all 0.2s ease",
-        textAlign: "left",
-        opacity: disabled ? 0.45 : 1,
-      }}
-      type="button"
-    >
-      {emoji && <span style={{ fontSize: 22 }}>{emoji}</span>}
-      <div style={{ flex: 1 }}>
-        <div
-          style={{
-            fontSize: 14,
-            fontWeight: 600,
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          {label}
-        </div>
-        {sub && (
-          <div
-            style={{
-              fontSize: 11,
-              color: "#666",
-              marginTop: 2,
-              lineHeight: 1.35,
-            }}
-          >
-            {sub}
-          </div>
-        )}
-      </div>
-      <div
-        style={{
-          width: 20,
-          height: 20,
-          borderRadius: 10,
-          border: selected ? "2px solid #FF6B35" : "2px solid #333",
-          background: selected ? "#FF6B35" : "transparent",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.2s ease",
-        }}
-      >
-        {selected && <span style={{ color: "#fff", fontSize: 12 }}>✓</span>}
-      </div>
-    </button>
-  )
-
-  const Input = (props) => (
-    <input
-      {...props}
-      style={{
-        width: "100%",
-        padding: isNarrow ? "14px 16px" : "15px 16px",
-        background: "rgba(255,255,255,0.05)",
-        border: "1.5px solid rgba(255,255,255,0.1)",
-        borderRadius: 12,
-        color: "#fff",
-        fontSize: 15,
-        outline: "none",
-        boxSizing: "border-box",
-        fontFamily: "'DM Sans', sans-serif",
-        ...(props.style || {}),
-      }}
-    />
-  )
-
-  // STEP 0: Welcome
+  // -----------------------------
+  // Steps
+  // -----------------------------
   if (step === 0)
     return (
-      <PhoneFrame>
-        <StepContainer centered>
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <StepContainer centered isNarrow={isNarrow} animating={animating}>
           <div style={{ textAlign: "center", padding: "0 16px" }}>
             <div
               style={{
@@ -766,7 +807,9 @@ function GedeonOnboarding() {
               Tous les événements du monde.{"\n"}Du concert au village jusqu'aux
               JO.
             </p>
-            <PrimaryButton onClick={goNext}>Commencer →</PrimaryButton>
+            <PrimaryButton onClick={goNext} isNarrow={isNarrow}>
+              Commencer →
+            </PrimaryButton>
             <p style={{ color: "#555", fontSize: 11, marginTop: 16 }}>
               Inscription / connexion en 1 minute
             </p>
@@ -775,25 +818,33 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // STEP 1: Auth (mode + email)
   if (step === 1)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Ton compte GEDEON est sécurisé par email + mot de passe.">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title
+            isNarrow={isNarrow}
+            sub="Ton compte GEDEON est sécurisé par email + mot de passe."
+          >
             Connexion / inscription
           </Title>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              marginBottom: 16,
-            }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
             <OptionCard
+              isNarrow={isNarrow}
               emoji="✨"
               label="Créer un compte"
               sub="Nouveau sur GEDEON"
@@ -801,6 +852,7 @@ function GedeonOnboarding() {
               onClick={() => setAuthMode("register")}
             />
             <OptionCard
+              isNarrow={isNarrow}
               emoji="🔑"
               label="Se connecter"
               sub="J'ai déjà un compte"
@@ -808,6 +860,7 @@ function GedeonOnboarding() {
               onClick={() => setAuthMode("login")}
             />
             <OptionCard
+              isNarrow={isNarrow}
               emoji="📱"
               label="Par SMS (bientôt)"
               sub="Non disponible dans le backend actuel"
@@ -817,12 +870,16 @@ function GedeonOnboarding() {
           </div>
 
           <div style={{ marginBottom: 12 }}>
-            <Input
+            <TextInput
+              isNarrow={isNarrow}
               type="email"
               placeholder="ton@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              inputMode="email"
             />
             {!isValidEmail(email) && email.length > 0 && (
               <p style={{ color: "#FFB347", fontSize: 12, marginTop: 8 }}>
@@ -832,7 +889,11 @@ function GedeonOnboarding() {
           </div>
 
           <div style={{ marginTop: "auto" }}>
-            <PrimaryButton onClick={goNext} disabled={!canProceedStep1}>
+            <PrimaryButton
+              onClick={goNext}
+              disabled={!canProceedStep1}
+              isNarrow={isNarrow}
+            >
               Continuer →
             </PrimaryButton>
           </div>
@@ -840,13 +901,25 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // STEP 2: Auth details (password + pseudo if register)
   if (step === 2)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
           <Title
+            isNarrow={isNarrow}
             sub={
               authMode === "register"
                 ? "Crée ton compte, puis confirme par lien email."
@@ -858,11 +931,14 @@ function GedeonOnboarding() {
 
           {authMode === "register" && (
             <div style={{ marginBottom: 12 }}>
-              <Input
+              <TextInput
+                isNarrow={isNarrow}
                 placeholder="Pseudo (ex: marie_lorio)"
                 value={pseudo}
                 onChange={(e) => setPseudo(e.target.value)}
                 autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
               />
               <p style={{ color: "#555", fontSize: 11, marginTop: 8 }}>
                 2 caractères min • lettres/chiffres/_/- acceptés
@@ -872,7 +948,8 @@ function GedeonOnboarding() {
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ position: "relative" }}>
-              <Input
+              <TextInput
+                isNarrow={isNarrow}
                 type={showPwd ? "text" : "password"}
                 placeholder="Mot de passe (min 4 caractères)"
                 value={password}
@@ -906,7 +983,8 @@ function GedeonOnboarding() {
 
           {authMode === "register" && (
             <div style={{ marginBottom: 12 }}>
-              <Input
+              <TextInput
+                isNarrow={isNarrow}
                 type={showPwd ? "text" : "password"}
                 placeholder="Confirme le mot de passe"
                 value={password2}
@@ -934,9 +1012,7 @@ function GedeonOnboarding() {
               }}
             >
               {authError && (
-                <div
-                  style={{ color: "#ff8a8a", fontSize: 13, lineHeight: 1.5 }}
-                >
+                <div style={{ color: "#ff8a8a", fontSize: 13, lineHeight: 1.5 }}>
                   {authError}
                 </div>
               )}
@@ -971,8 +1047,8 @@ function GedeonOnboarding() {
               }}
             >
               <div style={{ color: "#ddd", fontSize: 12, lineHeight: 1.6 }}>
-                ✅ <b>Confirmation email</b> : ouvre le lien reçu, puis clique
-                sur <b>“J’ai confirmé”</b> ci-dessous.
+                ✅ <b>Confirmation email</b> : ouvre le lien reçu, puis clique sur{" "}
+                <b>“J’ai confirmé”</b> ci-dessous.
               </div>
               <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                 <button
@@ -994,6 +1070,7 @@ function GedeonOnboarding() {
                 </button>
                 <button
                   onClick={async () => {
+                    // garde ton comportement initial
                     setAuthMode("login")
                     await handleAuthSubmit()
                   }}
@@ -1020,6 +1097,7 @@ function GedeonOnboarding() {
             <PrimaryButton
               onClick={handleAuthSubmit}
               disabled={!canSubmitAuth || authLoading}
+              isNarrow={isNarrow}
             >
               {authLoading
                 ? "..."
@@ -1076,34 +1154,42 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // STEP 3: Identity
   if (step === 3)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Ces infos restent privées.">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Ces infos restent privées.">
             Comment tu t'appelles ?
           </Title>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              marginBottom: 16,
-            }}
-          >
-            <Input
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+            <TextInput
+              isNarrow={isNarrow}
               placeholder="Prénom"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
             />
-            <Input
+            <TextInput
+              isNarrow={isNarrow}
               placeholder="Nom"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
           </div>
+
           <div
             style={{
               display: "flex",
@@ -1116,21 +1202,18 @@ function GedeonOnboarding() {
             }}
           >
             <span style={{ fontSize: 16 }}>🔒</span>
-            <p
-              style={{
-                color: "#999",
-                fontSize: 11,
-                lineHeight: 1.5,
-                margin: 0,
-              }}
-            >
-              Ton identité n'est jamais partagée publiquement. Elle sert
-              uniquement à la billetterie et aux réservations via nos
-              partenaires.
+            <p style={{ color: "#999", fontSize: 11, lineHeight: 1.5, margin: 0 }}>
+              Ton identité n'est jamais partagée publiquement. Elle sert uniquement à la
+              billetterie et aux réservations via nos partenaires.
             </p>
           </div>
+
           <div style={{ marginTop: "auto" }}>
-            <PrimaryButton onClick={goNext} disabled={!firstName || !lastName}>
+            <PrimaryButton
+              onClick={goNext}
+              disabled={!firstName || !lastName}
+              isNarrow={isNarrow}
+            >
               Continuer
             </PrimaryButton>
           </div>
@@ -1138,12 +1221,23 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // STEP 4: Intro to questions
   if (step === 4)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer centered>
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer centered isNarrow={isNarrow} animating={animating}>
           <div style={{ textAlign: "center", padding: "0 12px" }}>
             <div style={{ fontSize: 48, marginBottom: 20 }}>🎯</div>
             <h2
@@ -1157,21 +1251,18 @@ function GedeonOnboarding() {
             >
               Te connaître en 10 questions
             </h2>
-            <p
-              style={{
-                color: "#888",
-                fontSize: 14,
-                lineHeight: 1.6,
-                margin: "0 0 8px",
-              }}
-            >
-              Pour trouver les bons plans près de chez toi, t'alerter au bon
-              moment, et ne jamais rater ce qui compte pour toi.
+            <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 8px" }}>
+              Pour trouver les bons plans près de chez toi, t'alerter au bon moment,
+              et ne jamais rater ce qui compte pour toi.
             </p>
             <p style={{ color: "#555", fontSize: 12, margin: "0 0 36px" }}>
               ≈ 1 minute • Tu peux modifier à tout moment
             </p>
-            <PrimaryButton onClick={goNext}>C'est parti !</PrimaryButton>
+
+            <PrimaryButton onClick={goNext} isNarrow={isNarrow}>
+              C'est parti !
+            </PrimaryButton>
+
             <button
               onClick={() => setStep(totalSteps - 2)}
               style={{
@@ -1195,23 +1286,28 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q1 (Step 5): Centres d'intérêt
   if (step === 5)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Choisis 3 à 5 thèmes qui te parlent">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Choisis 3 à 5 thèmes qui te parlent">
             ① Tes passions
           </Title>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 16,
-            }}
-          >
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
             {INTERESTS.map((i) => (
               <Chip
                 key={i.id}
@@ -1222,20 +1318,16 @@ function GedeonOnboarding() {
               />
             ))}
           </div>
-          <p
-            style={{
-              color: "#555",
-              fontSize: 11,
-              textAlign: "center",
-              margin: "4px 0 12px",
-            }}
-          >
+
+          <p style={{ color: "#555", fontSize: 11, textAlign: "center", margin: "4px 0 12px" }}>
             {profile.interests.length}/5 sélectionnés
           </p>
+
           <div style={{ marginTop: "auto" }}>
             <PrimaryButton
               onClick={goNext}
               disabled={profile.interests.length < 3}
+              isNarrow={isNarrow}
             >
               Suivant
             </PrimaryButton>
@@ -1244,70 +1336,50 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q2 (Step 6): Sport rapport
   if (step === 6)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Ça nous aide à calibrer tes recommandations">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Ça nous aide à calibrer tes recommandations">
             ② Le sport, pour toi c'est...
           </Title>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-              marginBottom: 16,
-            }}
-          >
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
             {[
-              {
-                id: "spectateur",
-                emoji: "📺",
-                label: "Spectateur",
-                sub: "J'aime regarder, supporter",
-              },
-              {
-                id: "pratiquant",
-                emoji: "🏃",
-                label: "Pratiquant",
-                sub: "Je participe, je cours, je joue",
-              },
-              {
-                id: "les-deux",
-                emoji: "⚡",
-                label: "Les deux !",
-                sub: "Spectateur ET pratiquant",
-              },
-              {
-                id: "bof",
-                emoji: "😴",
-                label: "Pas trop mon truc",
-                sub: "On passe au suivant",
-              },
+              { id: "spectateur", emoji: "📺", label: "Spectateur", sub: "J'aime regarder, supporter" },
+              { id: "pratiquant", emoji: "🏃", label: "Pratiquant", sub: "Je participe, je cours, je joue" },
+              { id: "les-deux", emoji: "⚡", label: "Les deux !", sub: "Spectateur ET pratiquant" },
+              { id: "bof", emoji: "😴", label: "Pas trop mon truc", sub: "On passe au suivant" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.sportType === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, sportType: opt.id }))}
               />
             ))}
           </div>
+
           {profile.sportType && profile.sportType !== "bof" && (
             <>
               <p style={{ color: "#777", fontSize: 12, margin: "8px 0" }}>
                 Sports préférés (optionnel) :
               </p>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 6,
-                  marginBottom: 16,
-                }}
-              >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
                 {SPORTS_TYPES.map((s) => (
                   <Chip
                     key={s}
@@ -1319,8 +1391,9 @@ function GedeonOnboarding() {
               </div>
             </>
           )}
+
           <div style={{ marginTop: "auto" }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.sportType}>
+            <PrimaryButton onClick={goNext} disabled={!profile.sportType} isNarrow={isNarrow}>
               Suivant
             </PrimaryButton>
           </div>
@@ -1328,23 +1401,28 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q3 (Step 7): Musique
   if (step === 7)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Sélectionne autant de genres que tu veux">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Sélectionne autant de genres que tu veux">
             ③ Quels sons te font vibrer ?
           </Title>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 20,
-            }}
-          >
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
             {MUSIC_GENRES.map((g) => (
               <Chip
                 key={g}
@@ -1354,13 +1432,16 @@ function GedeonOnboarding() {
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto" }}>
             <PrimaryButton
               onClick={goNext}
               disabled={profile.musicGenres.length === 0}
+              isNarrow={isNarrow}
             >
               Suivant
             </PrimaryButton>
+
             <button
               onClick={goNext}
               style={{
@@ -1383,58 +1464,47 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q4 (Step 8): Companion
   if (step === 8)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="On adapte les suggestions en conséquence">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="On adapte les suggestions en conséquence">
             ④ Tu sors plutôt...
           </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "solo",
-                emoji: "🧑",
-                label: "En solo",
-                sub: "J'aime découvrir seul(e)",
-              },
-              {
-                id: "couple",
-                emoji: "💑",
-                label: "En couple",
-                sub: "Sorties à deux",
-              },
-              {
-                id: "famille",
-                emoji: "👨‍👩‍👧",
-                label: "En famille",
-                sub: "Avec les enfants",
-              },
-              {
-                id: "amis",
-                emoji: "👯",
-                label: "Entre amis",
-                sub: "La bande, toujours",
-              },
-              {
-                id: "depends",
-                emoji: "🔄",
-                label: "Ça dépend",
-                sub: "Un peu de tout",
-              },
+              { id: "solo", emoji: "🧑", label: "En solo", sub: "J'aime découvrir seul(e)" },
+              { id: "couple", emoji: "💑", label: "En couple", sub: "Sorties à deux" },
+              { id: "famille", emoji: "👨‍👩‍👧", label: "En famille", sub: "Avec les enfants" },
+              { id: "amis", emoji: "👯", label: "Entre amis", sub: "La bande, toujours" },
+              { id: "depends", emoji: "🔄", label: "Ça dépend", sub: "Un peu de tout" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.companion === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, companion: opt.id }))}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.companion}>
+            <PrimaryButton onClick={goNext} disabled={!profile.companion} isNarrow={isNarrow}>
               Suivant
             </PrimaryButton>
           </div>
@@ -1442,58 +1512,47 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q5 (Step 9): Distance
   if (step === 9)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Rayon de recherche par défaut (modifiable)">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Rayon de recherche par défaut (modifiable)">
             ⑤ Jusqu'où tu irais ?
           </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "5km",
-                emoji: "📍",
-                label: "Mon quartier",
-                sub: "Moins de 5 km",
-              },
-              {
-                id: "20km",
-                emoji: "🏙️",
-                label: "Ma ville",
-                sub: "Moins de 20 km",
-              },
-              {
-                id: "100km",
-                emoji: "🚗",
-                label: "Ma région",
-                sub: "Jusqu'à 100 km",
-              },
-              {
-                id: "national",
-                emoji: "🗺️",
-                label: "Partout dans le pays",
-                sub: "Si ça vaut le déplacement",
-              },
-              {
-                id: "international",
-                emoji: "✈️",
-                label: "Sans frontières !",
-                sub: "Le monde est mon terrain de jeu",
-              },
+              { id: "5km", emoji: "📍", label: "Mon quartier", sub: "Moins de 5 km" },
+              { id: "20km", emoji: "🏙️", label: "Ma ville", sub: "Moins de 20 km" },
+              { id: "100km", emoji: "🚗", label: "Ma région", sub: "Jusqu'à 100 km" },
+              { id: "national", emoji: "🗺️", label: "Partout dans le pays", sub: "Si ça vaut le déplacement" },
+              { id: "international", emoji: "✈️", label: "Sans frontières !", sub: "Le monde est mon terrain de jeu" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.distance === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, distance: opt.id }))}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.distance}>
+            <PrimaryButton onClick={goNext} disabled={!profile.distance} isNarrow={isNarrow}>
               Suivant
             </PrimaryButton>
           </div>
@@ -1501,52 +1560,46 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q6 (Step 10): Budget
   if (step === 10)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Pour te proposer des événements dans tes moyens">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Pour te proposer des événements dans tes moyens">
             ⑥ Budget sorties
           </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "free",
-                emoji: "🆓",
-                label: "Gratuit c'est bien",
-                sub: "Priorité aux événements gratuits",
-              },
-              {
-                id: "30",
-                emoji: "💰",
-                label: "Jusqu'à 30€",
-                sub: "Raisonnable",
-              },
-              {
-                id: "100",
-                emoji: "💳",
-                label: "Jusqu'à 100€",
-                sub: "Pour les bonnes occasions",
-              },
-              {
-                id: "nolimit",
-                emoji: "✨",
-                label: "Le prix n'est pas un frein",
-                sub: "Si c'est bien, j'y vais",
-              },
+              { id: "free", emoji: "🆓", label: "Gratuit c'est bien", sub: "Priorité aux événements gratuits" },
+              { id: "30", emoji: "💰", label: "Jusqu'à 30€", sub: "Raisonnable" },
+              { id: "100", emoji: "💳", label: "Jusqu'à 100€", sub: "Pour les bonnes occasions" },
+              { id: "nolimit", emoji: "✨", label: "Le prix n'est pas un frein", sub: "Si c'est bien, j'y vais" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.budget === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, budget: opt.id }))}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.budget}>
+            <PrimaryButton onClick={goNext} disabled={!profile.budget} isNarrow={isNarrow}>
               Suivant
             </PrimaryButton>
           </div>
@@ -1554,52 +1607,46 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q7 (Step 11): Frequency
   if (step === 11)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Pour calibrer le volume de suggestions">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Pour calibrer le volume de suggestions">
             ⑦ Tu sors à quelle fréquence ?
           </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "rare",
-                emoji: "🌙",
-                label: "1-2 fois par mois",
-                sub: "Quand ça me dit",
-              },
-              {
-                id: "weekly",
-                emoji: "📅",
-                label: "Chaque semaine",
-                sub: "C'est un rituel",
-              },
-              {
-                id: "multi",
-                emoji: "🔥",
-                label: "Plusieurs fois par semaine",
-                sub: "Je ne tiens pas en place",
-              },
-              {
-                id: "spontaneous",
-                emoji: "🎲",
-                label: "Quand l'envie me prend",
-                sub: "Pas de planning",
-              },
+              { id: "rare", emoji: "🌙", label: "1-2 fois par mois", sub: "Quand ça me dit" },
+              { id: "weekly", emoji: "📅", label: "Chaque semaine", sub: "C'est un rituel" },
+              { id: "multi", emoji: "🔥", label: "Plusieurs fois par semaine", sub: "Je ne tiens pas en place" },
+              { id: "spontaneous", emoji: "🎲", label: "Quand l'envie me prend", sub: "Pas de planning" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.frequency === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, frequency: opt.id }))}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.frequency}>
+            <PrimaryButton onClick={goNext} disabled={!profile.frequency} isNarrow={isNarrow}>
               Suivant
             </PrimaryButton>
           </div>
@@ -1607,55 +1654,50 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q8 (Step 12): When
   if (step === 12)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Plusieurs choix possibles">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Plusieurs choix possibles">
             ⑧ C'est quand pour toi ?
           </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "semaine",
-                emoji: "🏢",
-                label: "En semaine",
-                sub: "Lunch, afterwork...",
-              },
-              {
-                id: "weekend",
-                emoji: "🌅",
-                label: "Le weekend",
-                sub: "Samedi, dimanche",
-              },
+              { id: "semaine", emoji: "🏢", label: "En semaine", sub: "Lunch, afterwork..." },
+              { id: "weekend", emoji: "🌅", label: "Le weekend", sub: "Samedi, dimanche" },
               { id: "soir", emoji: "🌃", label: "En soirée", sub: "Après 19h" },
-              {
-                id: "vacances",
-                emoji: "🏖️",
-                label: "Vacances / jours fériés",
-                sub: "Quand j'ai du temps",
-              },
-              {
-                id: "anytime",
-                emoji: "⏰",
-                label: "Tout le temps !",
-                sub: "Je suis toujours dispo",
-              },
+              { id: "vacances", emoji: "🏖️", label: "Vacances / jours fériés", sub: "Quand j'ai du temps" },
+              { id: "anytime", emoji: "⏰", label: "Tout le temps !", sub: "Je suis toujours dispo" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.when.includes(opt.id)}
                 onClick={() => toggleArrayItem("when", opt.id)}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
             <PrimaryButton
               onClick={goNext}
               disabled={profile.when.length === 0}
+              isNarrow={isNarrow}
             >
               Suivant
             </PrimaryButton>
@@ -1664,46 +1706,45 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q9 (Step 13): Discovery vs routine
   if (step === 13)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="On calibre la dose de surprise">
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="On calibre la dose de surprise">
             ⑨ Ton style de sortie
           </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "discover",
-                emoji: "🧭",
-                label: "Explorateur",
-                sub: "Surprends-moi ! Nouveautés, découvertes",
-              },
-              {
-                id: "routine",
-                emoji: "❤️",
-                label: "Fidèle",
-                sub: "Mes artistes, mes équipes, mes lieux",
-              },
-              {
-                id: "both",
-                emoji: "⚖️",
-                label: "Les deux",
-                sub: "Un mix de nouveauté et de valeurs sûres",
-              },
+              { id: "discover", emoji: "🧭", label: "Explorateur", sub: "Surprends-moi ! Nouveautés, découvertes" },
+              { id: "routine", emoji: "❤️", label: "Fidèle", sub: "Mes artistes, mes équipes, mes lieux" },
+              { id: "both", emoji: "⚖️", label: "Les deux", sub: "Un mix de nouveauté et de valeurs sûres" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.discovery === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, discovery: opt.id }))}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.discovery}>
+            <PrimaryButton onClick={goNext} disabled={!profile.discovery} isNarrow={isNarrow}>
               Suivant
             </PrimaryButton>
           </div>
@@ -1711,44 +1752,45 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // Q10 (Step 14): Ambiance
   if (step === 14)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer>
-          <Title sub="Dernière question !">⑩ L'ambiance idéale</Title>
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer isNarrow={isNarrow} animating={animating}>
+          <Title isNarrow={isNarrow} sub="Dernière question !">
+            ⑩ L'ambiance idéale
+          </Title>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              {
-                id: "big",
-                emoji: "🏟️",
-                label: "En grand",
-                sub: "Stades, festivals, concerts géants",
-              },
-              {
-                id: "intimate",
-                emoji: "🎪",
-                label: "Intimiste",
-                sub: "Petites jauges, ambiance cosy",
-              },
-              {
-                id: "both",
-                emoji: "🎭",
-                label: "Les deux me vont",
-                sub: "Ça dépend du moment",
-              },
+              { id: "big", emoji: "🏟️", label: "En grand", sub: "Stades, festivals, concerts géants" },
+              { id: "intimate", emoji: "🎪", label: "Intimiste", sub: "Petites jauges, ambiance cosy" },
+              { id: "both", emoji: "🎭", label: "Les deux me vont", sub: "Ça dépend du moment" },
             ].map((opt) => (
               <OptionCard
                 key={opt.id}
+                isNarrow={isNarrow}
                 {...opt}
                 selected={profile.ambiance === opt.id}
                 onClick={() => setProfile((p) => ({ ...p, ambiance: opt.id }))}
               />
             ))}
           </div>
+
           <div style={{ marginTop: "auto", paddingTop: 12 }}>
-            <PrimaryButton onClick={goNext} disabled={!profile.ambiance}>
+            <PrimaryButton onClick={goNext} disabled={!profile.ambiance} isNarrow={isNarrow}>
               Terminer →
             </PrimaryButton>
           </div>
@@ -1756,12 +1798,23 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // STEP 15: Notifications (save here)
   if (step === 15)
     return (
-      <PhoneFrame>
-        <ProgressBar />
-        <StepContainer centered>
+      <PhoneFrame
+        isNarrow={isNarrow}
+        isTablet={isTablet}
+        frameHeightMobile={frameHeightMobile}
+        frameHeightWide={frameHeightWide}
+        frameWidthWide={frameWidthWide}
+      >
+        <ProgressBar
+          step={step}
+          totalSteps={totalSteps}
+          progressPercent={progressPercent}
+          isNarrow={isNarrow}
+          goBack={goBack}
+        />
+        <StepContainer centered isNarrow={isNarrow} animating={animating}>
           <div style={{ textAlign: "center", padding: "0 12px" }}>
             <div style={{ fontSize: 48, marginBottom: 20 }}>🔔</div>
             <h2
@@ -1775,26 +1828,13 @@ function GedeonOnboarding() {
             >
               Notifications
             </h2>
-            <p
-              style={{
-                color: "#888",
-                fontSize: 14,
-                lineHeight: 1.6,
-                margin: "0 0 32px",
-              }}
-            >
-              Pas obligatoire, mais conseillé pour ne pas rater un événement
-              près de chez toi !
+            <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 32px" }}>
+              Pas obligatoire, mais conseillé pour ne pas rater un événement près de chez toi !
             </p>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                marginBottom: 24,
-              }}
-            >
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
               <OptionCard
+                isNarrow={isNarrow}
                 emoji="✅"
                 label="Oui, m'alerter"
                 sub="Événements majeurs + mes favoris uniquement"
@@ -1802,6 +1842,7 @@ function GedeonOnboarding() {
                 onClick={() => setNotifChoice(true)}
               />
               <OptionCard
+                isNarrow={isNarrow}
                 emoji="⏳"
                 label="Plus tard"
                 sub="Tu pourras activer dans les réglages"
@@ -1809,9 +1850,11 @@ function GedeonOnboarding() {
                 onClick={() => setNotifChoice(false)}
               />
             </div>
+
             <PrimaryButton
               onClick={finalizeOnboardingAndGoNext}
               disabled={notifChoice === null || saving}
+              isNarrow={isNarrow}
             >
               {saving ? "Enregistrement..." : "Finaliser"}
             </PrimaryButton>
@@ -1820,10 +1863,16 @@ function GedeonOnboarding() {
       </PhoneFrame>
     )
 
-  // DONE SCREEN (step 16)
+  // DONE (step 16)
   return (
-    <PhoneFrame>
-      <StepContainer centered>
+    <PhoneFrame
+      isNarrow={isNarrow}
+      isTablet={isTablet}
+      frameHeightMobile={frameHeightMobile}
+      frameHeightWide={frameHeightWide}
+      frameWidthWide={frameWidthWide}
+    >
+      <StepContainer centered isNarrow={isNarrow} animating={animating}>
         <div style={{ textAlign: "center", padding: "0 12px" }}>
           <div
             style={{
@@ -1841,6 +1890,7 @@ function GedeonOnboarding() {
           >
             🎉
           </div>
+
           <h2
             style={{
               color: "#fff",
@@ -1852,16 +1902,9 @@ function GedeonOnboarding() {
           >
             Bienvenue{firstName ? ` ${firstName}` : ""} !
           </h2>
-          <p
-            style={{
-              color: "#888",
-              fontSize: 14,
-              lineHeight: 1.6,
-              margin: "0 0 32px",
-            }}
-          >
-            Ton profil est prêt. GEDEON va maintenant te proposer des événements
-            sur mesure.
+
+          <p style={{ color: "#888", fontSize: 14, lineHeight: 1.6, margin: "0 0 32px" }}>
+            Ton profil est prêt. GEDEON va maintenant te proposer des événements sur mesure.
           </p>
 
           <div
@@ -1885,6 +1928,7 @@ function GedeonOnboarding() {
             >
               Ton profil
             </p>
+
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {profile.interests.map((id) => {
                 const interest = INTERESTS.find((i) => i.id === id)
@@ -1906,7 +1950,7 @@ function GedeonOnboarding() {
             </div>
           </div>
 
-          <PrimaryButton onClick={() => (window.location.href = "/")}>
+          <PrimaryButton onClick={() => (window.location.href = "/")} isNarrow={isNarrow}>
             Explorer GEDEON →
           </PrimaryButton>
 
@@ -1932,8 +1976,10 @@ function GedeonOnboarding() {
   )
 }
 
+// -----------------------------
 // Mount
-(function mount() {
+// -----------------------------
+;(function mount() {
   const el = document.getElementById("root")
   if (!el) return
   const root = ReactDOM.createRoot(el)
