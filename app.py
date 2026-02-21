@@ -875,11 +875,11 @@ def list_users():
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT u.id, u.pseudo, u.pseudo_number, u.created_at, u.last_seen,
+            SELECT u.id, u.pseudo || '_' || COALESCE(u.pseudo_number, 1) as pseudo, u.created_at, u.last_seen,
                    COUNT(s.id) as scan_count
             FROM users u
             LEFT JOIN scanned_events s ON u.id = s.user_id
-            GROUP BY u.id
+            GROUP BY u.id, u.pseudo, u.pseudo_number
             ORDER BY u.pseudo
         """)
         users = cur.fetchall()
@@ -888,8 +888,6 @@ def list_users():
         conn.close()
 
         for user in users:
-            user['pseudo'] = user['pseudo'] + '_' + str(user.get('pseudo_number', 1))
-            del user['pseudo_number']
             if user.get('created_at'):
                 user['created_at'] = user['created_at'].isoformat()
             if user.get('last_seen'):
