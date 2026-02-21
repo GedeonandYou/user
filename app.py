@@ -352,11 +352,11 @@ def require_auth(f):
 
 
 def validate_pseudo(pseudo):
-    """Valide un pseudo (2-20 chars, lettres/chiffres/underscore)"""
+    """Valide un pseudo (2-20 chars, lettres uniquement)"""
     if not pseudo or len(pseudo) < 2 or len(pseudo) > 20:
         return False, "Le pseudo doit faire entre 2 et 20 caractères"
-    if not re.match(r'^[a-zA-Z0-9_àâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ]+$', pseudo):
-        return False, "Le pseudo ne peut contenir que des lettres, chiffres et underscore"
+    if not re.match(r'^[a-zA-Z]+$', pseudo):
+        return False, "Le pseudo ne peut contenir que des lettres (a-z)"
     return True, None
 
 
@@ -373,7 +373,8 @@ def init_user_tables():
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
-                pseudo VARCHAR(20) NOT NULL UNIQUE,
+                pseudo VARCHAR(25) NOT NULL,
+                pseudo_number INT NOT NULL DEFAULT 1,
                 email VARCHAR(255) NOT NULL UNIQUE,
                 password_hash VARCHAR(255) NOT NULL,
                 email_confirmed BOOLEAN DEFAULT FALSE,
@@ -383,7 +384,8 @@ def init_user_tables():
                 reset_sent_at TIMESTAMP,
                 device_id VARCHAR(64),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(pseudo, pseudo_number)
             )
         """)
 
@@ -411,6 +413,20 @@ def init_user_tables():
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password_hash') THEN
                     ALTER TABLE users ADD COLUMN password_hash VARCHAR(255);
                 END IF;
+                -- Migration: ajouter pseudo_number et ajuster les contraintes
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pseudo_number') THEN
+                    ALTER TABLE users ADD COLUMN pseudo_number INT NOT NULL DEFAULT 1;
+                    -- Supprimer l'ancienne contrainte UNIQUE sur pseudo seul si elle existe
+                    IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='users' AND constraint_type='UNIQUE' AND constraint_name='users_pseudo_key') THEN
+                        ALTER TABLE users DROP CONSTRAINT users_pseudo_key;
+                    END IF;
+                    -- Ajouter la contrainte UNIQUE composite (pseudo, pseudo_number)
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name='users' AND constraint_name='users_pseudo_pseudo_number_key') THEN
+                        ALTER TABLE users ADD CONSTRAINT users_pseudo_pseudo_number_key UNIQUE (pseudo, pseudo_number);
+                    END IF;
+                END IF;
+                -- Agrandir pseudo si nécessaire
+                ALTER TABLE users ALTER COLUMN pseudo TYPE VARCHAR(25);
             END $$;
         """)
 
@@ -488,35 +504,37 @@ def register():
                 return jsonify({"status": "error", "message": "Cet email est en attente de confirmation. Vérifiez vos emails."}), 409
             return jsonify({"status": "error", "message": "Cet email est déjà utilisé"}), 409
 
-        # Vérifier si le pseudo existe déjà
-        cur.execute("SELECT id FROM users WHERE pseudo = %s", (pseudo,))
-        if cur.fetchone():
-            cur.close()
-            conn.close()
-            return jsonify({"status": "error", "message": "Ce pseudo est déjà pris"}), 409
+        # Calculer le prochain numéro pour ce pseudo
+        cur.execute(
+            "SELECT COALESCE(MAX(pseudo_number), 0) + 1 AS next_number FROM users WHERE LOWER(pseudo) = LOWER(%s)",
+            (pseudo,)
+        )
+        pseudo_number = cur.fetchone()['next_number']
 
         # Créer l'utilisateur
         confirmation_token = generate_confirmation_token()
         password_hash = generate_password_hash(password)
         cur.execute(
-            """INSERT INTO users (email, pseudo, password_hash, device_id, email_confirmed, confirmation_token, confirmation_sent_at)
-               VALUES (%s, %s, %s, %s, FALSE, %s, CURRENT_TIMESTAMP)
-               RETURNING id, pseudo, email""",
-            (email, pseudo, password_hash, device_id or None, confirmation_token)
+            """INSERT INTO users (email, pseudo, pseudo_number, password_hash, device_id, email_confirmed, confirmation_token, confirmation_sent_at)
+               VALUES (%s, %s, %s, %s, %s, FALSE, %s, CURRENT_TIMESTAMP)
+               RETURNING id, pseudo, pseudo_number, email""",
+            (email, pseudo, pseudo_number, password_hash, device_id or None, confirmation_token)
         )
         new_user = cur.fetchone()
         conn.commit()
 
+        display_name = pseudo + '_' + str(pseudo_number)
+
         # Envoyer l'email de confirmation
         if AUTH_EMAIL_AVAILABLE:
-            success, error_msg = send_confirmation_email(email, pseudo, confirmation_token)
+            success, error_msg = send_confirmation_email(email, display_name, confirmation_token)
             if not success:
                 print(f"⚠️ Erreur envoi email: {error_msg}")
 
         cur.close()
         conn.close()
 
-        print(f"👤 Inscription: {pseudo} ({email})")
+        print(f"👤 Inscription: {display_name} ({email})")
 
         return jsonify({
             "status": "success",
@@ -543,7 +561,7 @@ def login():
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT id, pseudo, email, password_hash, email_confirmed FROM users WHERE email = %s",
+            "SELECT id, pseudo, pseudo_number, email, password_hash, email_confirmed FROM users WHERE email = %s",
             (email,)
         )
         user = cur.fetchone()
@@ -574,17 +592,18 @@ def login():
         conn.close()
 
         # Session
+        display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
         session['user_logged_in'] = True
         session['user_id'] = user['id']
-        session['user_pseudo'] = user['pseudo']
+        session['user_pseudo'] = display_name
         session['user_email'] = user['email']
 
-        print(f"✅ Login: {user['pseudo']} ({email})")
+        print(f"✅ Login: {display_name} ({email})")
 
         return jsonify({
             "status": "success",
             "message": "Connexion réussie",
-            "username": user['pseudo']
+            "username": display_name
         }), 200
 
     except Exception as e:
@@ -631,7 +650,7 @@ def resend_confirmation():
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT id, pseudo, email_confirmed FROM users WHERE email = %s",
+            "SELECT id, pseudo, pseudo_number, email_confirmed FROM users WHERE email = %s",
             (email,)
         )
         user = cur.fetchone()
@@ -654,7 +673,8 @@ def resend_confirmation():
         conn.commit()
 
         if AUTH_EMAIL_AVAILABLE:
-            send_confirmation_email(email, user['pseudo'], new_token)
+            display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
+            send_confirmation_email(email, display_name, new_token)
 
         cur.close()
         conn.close()
@@ -678,7 +698,7 @@ def confirm_email():
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT id, pseudo, email_confirmed, confirmation_sent_at FROM users WHERE confirmation_token = %s",
+            "SELECT id, pseudo, pseudo_number, email_confirmed, confirmation_sent_at FROM users WHERE confirmation_token = %s",
             (token,)
         )
         user = cur.fetchone()
@@ -706,7 +726,8 @@ def confirm_email():
         cur.close()
         conn.close()
 
-        print(f"✅ Email confirmé: {user['pseudo']}")
+        display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
+        print(f"✅ Email confirmé: {display_name}")
         return send_from_directory('.', 'confirmation-success.html')
 
     except Exception as e:
@@ -727,7 +748,7 @@ def forgot_password():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT id, pseudo, email_confirmed FROM users WHERE email = %s", (email,))
+        cur.execute("SELECT id, pseudo, pseudo_number, email_confirmed FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
 
         if user and user['email_confirmed']:
@@ -739,7 +760,8 @@ def forgot_password():
             conn.commit()
 
             if AUTH_EMAIL_AVAILABLE:
-                send_password_reset_email(email, user['pseudo'], reset_token)
+                display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
+                send_password_reset_email(email, display_name, reset_token)
 
         cur.close()
         conn.close()
@@ -776,7 +798,7 @@ def reset_password():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT id, pseudo, reset_sent_at FROM users WHERE reset_token = %s", (token,))
+        cur.execute("SELECT id, pseudo, pseudo_number, reset_sent_at FROM users WHERE reset_token = %s", (token,))
         user = cur.fetchone()
 
         if not user:
@@ -798,7 +820,8 @@ def reset_password():
         cur.close()
         conn.close()
 
-        print(f"🔐 Mot de passe réinitialisé: {user['pseudo']}")
+        display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
+        print(f"🔐 Mot de passe réinitialisé: {display_name}")
         return jsonify({"status": "success", "message": "Mot de passe modifié !"}), 200
 
     except Exception as e:
@@ -818,7 +841,7 @@ def list_users():
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT u.id, u.pseudo, u.created_at, u.last_seen,
+            SELECT u.id, u.pseudo, u.pseudo_number, u.created_at, u.last_seen,
                    COUNT(s.id) as scan_count
             FROM users u
             LEFT JOIN scanned_events s ON u.id = s.user_id
@@ -831,6 +854,8 @@ def list_users():
         conn.close()
 
         for user in users:
+            user['pseudo'] = user['pseudo'] + '_' + str(user.get('pseudo_number', 1))
+            del user['pseudo_number']
             if user.get('created_at'):
                 user['created_at'] = user['created_at'].isoformat()
             if user.get('last_seen'):
@@ -861,7 +886,7 @@ def get_scanned_events():
                 s.location_name, s.city, s.address, s.latitude, s.longitude,
                 s.description, s.organizer, s.artists, s.pricing, s.tags,
                 s.is_private, s.created_at, s.website, s.country,
-                u.pseudo as user_pseudo,
+                u.pseudo || '_' || u.pseudo_number as user_pseudo,
                 (s.image_data IS NOT NULL OR s.image_path IS NOT NULL) as has_image
             FROM scanned_events s
             JOIN users u ON s.user_id = u.id
@@ -1219,10 +1244,10 @@ def get_stats():
         stats['by_city'] = [dict(row) for row in cur.fetchall()]
 
         cur.execute("""
-            SELECT u.pseudo, COUNT(s.id) as count
+            SELECT u.pseudo || '_' || u.pseudo_number as pseudo, COUNT(s.id) as count
             FROM users u LEFT JOIN scanned_events s ON u.id = s.user_id
             WHERE s.is_private = FALSE OR s.id IS NULL
-            GROUP BY u.id, u.pseudo ORDER BY count DESC LIMIT 20
+            GROUP BY u.id, u.pseudo, u.pseudo_number ORDER BY count DESC LIMIT 20
         """)
         stats['by_user'] = [dict(row) for row in cur.fetchall()]
 

@@ -2776,9 +2776,8 @@
                             var scanDateStr = scanDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                             scanInfo += scanDateStr;
                         }
-                        if (event.user_pseudo && event.user_id) {
-                            var userLabel = event.user_pseudo + '_' + event.user_id;
-                            scanInfo += ' par <strong>' + userLabel + '</strong>';
+                        if (event.user_pseudo) {
+                            scanInfo += ' par <strong>' + event.user_pseudo + '</strong>';
                         }
                         if (event.id) {
                             scanInfo += ' <span style="float:right;">#' + String(event.id).padStart(3, '0') + '</span>';
@@ -3348,9 +3347,8 @@
                         var scanDateStr = scanDate.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
                         scanInfo += scanDateStr;
                     }
-                    if (event.user_pseudo && event.user_id) {
-                        var userLabel = event.user_pseudo + '_' + event.user_id;
-                        scanInfo += ' par <strong>' + userLabel + '</strong>';
+                    if (event.user_pseudo) {
+                        scanInfo += ' par <strong>' + event.user_pseudo + '</strong>';
                     }
                     if (event.id) {
                         scanInfo += ' <span style="float:right;">#' + String(event.id).padStart(3, '0') + '</span>';
@@ -3409,7 +3407,7 @@
             </div>
 
             <div id="authRegisterForm" style="display:none;">
-                <input type="text" id="regPseudo" placeholder="Pseudo (2-20 caractères)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-size:14px;">
+                <input type="text" id="regPseudo" placeholder="Pseudo (lettres uniquement)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-size:14px;">
                 <input type="email" id="regEmail" placeholder="Email" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-size:14px;">
                 <input type="password" id="regPassword" placeholder="Mot de passe (4 car. min)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;margin-bottom:10px;font-size:14px;">
                 <div id="regError" style="color:#dc2626;font-size:12px;margin-bottom:10px;display:none;"></div>
