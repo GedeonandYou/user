@@ -465,6 +465,29 @@ def health():
 # API - INSCRIPTION / CONNEXION / CONFIRMATION
 # ============================================================================
 
+@app.route('/api/auth/check-pseudo', methods=['GET'])
+def check_pseudo():
+    """Retourne le prochain numéro disponible pour un pseudo donné."""
+    pseudo = request.args.get('pseudo', '').strip()
+    valid, error = validate_pseudo(pseudo)
+    if not valid:
+        return jsonify({"status": "error", "message": error}), 400
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT COALESCE(MAX(pseudo_number), 0) + 1 AS next_number FROM users WHERE LOWER(pseudo) = LOWER(%s)",
+            (pseudo,)
+        )
+        next_number = cur.fetchone()['next_number']
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "pseudo": pseudo, "next_number": next_number}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     """Inscription d'un nouvel utilisateur (ne doit pas déjà exister)"""
