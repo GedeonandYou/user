@@ -1,5 +1,5 @@
-// GEDEON Service Worker v1.1 - Carte Leaflet
-const CACHE_NAME = 'gedeon-cache-v1.1';
+// GEDEON Service Worker v1.2 - Carte Leaflet
+const CACHE_NAME = 'gedeon-cache-v1.2';
 const OFFLINE_URL = '/offline.html';
 
 // Fichiers à mettre en cache pour le mode offline
