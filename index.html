@@ -3447,11 +3447,36 @@
             document.getElementById('authForgotForm').style.display = 'none';
         }
 
+        var _pseudoListenerAttached = false;
         function showRegisterForm() {
             document.getElementById('authTitle').textContent = 'Inscription';
             document.getElementById('authLoginForm').style.display = 'none';
             document.getElementById('authRegisterForm').style.display = 'block';
             document.getElementById('authForgotForm').style.display = 'none';
+            if (!_pseudoListenerAttached) {
+                _pseudoListenerAttached = true;
+                var timer = null;
+                document.getElementById('regPseudo').addEventListener('input', function() {
+                    clearTimeout(timer);
+                    var pseudo = this.value.trim();
+                    var preview = document.getElementById('pseudoPreview');
+                    if (!pseudo || pseudo.length < 2 || !/^[a-zA-Z]+$/.test(pseudo)) {
+                        preview.textContent = '';
+                        return;
+                    }
+                    timer = setTimeout(async function() {
+                        try {
+                            var res = await fetch(SERVER_URL + '/api/auth/check-pseudo?pseudo=' + encodeURIComponent(pseudo));
+                            var data = await res.json();
+                            if (data.status === 'success') {
+                                preview.innerHTML = 'Votre pseudo sera : <strong>' + data.pseudo + '_' + data.next_number + '</strong>';
+                            } else {
+                                preview.textContent = '';
+                            }
+                        } catch(e) { preview.textContent = ''; }
+                    }, 400);
+                });
+            }
         }
 
         function showForgotForm() {
@@ -3495,31 +3520,6 @@
                 errorDiv.style.display = 'block';
             }
         }
-
-        // Preview du pseudo avec numéro
-        (function() {
-            var timer = null;
-            document.getElementById('regPseudo').addEventListener('input', function() {
-                clearTimeout(timer);
-                var pseudo = this.value.trim();
-                var preview = document.getElementById('pseudoPreview');
-                if (!pseudo || pseudo.length < 2 || !/^[a-zA-Z]+$/.test(pseudo)) {
-                    preview.textContent = '';
-                    return;
-                }
-                timer = setTimeout(async function() {
-                    try {
-                        var res = await fetch(SERVER_URL + '/api/auth/check-pseudo?pseudo=' + encodeURIComponent(pseudo));
-                        var data = await res.json();
-                        if (data.status === 'success') {
-                            preview.innerHTML = 'Votre pseudo sera : <strong>' + data.pseudo + '_' + data.next_number + '</strong>';
-                        } else {
-                            preview.textContent = '';
-                        }
-                    } catch(e) { preview.textContent = ''; }
-                }, 400);
-            });
-        })();
 
         async function doRegister() {
             var pseudo = document.getElementById('regPseudo').value.trim();
