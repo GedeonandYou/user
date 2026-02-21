@@ -774,6 +774,11 @@ def forgot_password():
         cur.execute("SELECT id, pseudo, pseudo_number, email_confirmed FROM users WHERE email = %s", (email,))
         user = cur.fetchone()
 
+        if not user:
+            print(f"⚠️ Forgot-password: email {email} non trouvé en base")
+        elif not user['email_confirmed']:
+            print(f"⚠️ Forgot-password: {email} non confirmé")
+
         if user and user['email_confirmed']:
             reset_token = generate_confirmation_token()
             cur.execute(
@@ -784,7 +789,13 @@ def forgot_password():
 
             if AUTH_EMAIL_AVAILABLE:
                 display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
-                send_password_reset_email(email, display_name, reset_token)
+                success, error_msg = send_password_reset_email(email, display_name, reset_token)
+                if success:
+                    print(f"📧 Email reset envoyé à {email} pour {display_name}")
+                else:
+                    print(f"⚠️ Erreur envoi email reset: {error_msg}")
+            else:
+                print(f"⚠️ AUTH_EMAIL non disponible, email reset non envoyé")
 
         cur.close()
         conn.close()
