@@ -406,7 +406,7 @@ function Chip({ label, selected, onClick, emoji }) {
   )
 }
 
-function OptionCard({ label, sub, selected, onClick, emoji, disabled, isNarrow }) {
+function OptionCard({ label, sub, selected, onClick, emoji, disabled, badge, isNarrow }) {
   return (
     <button
       onClick={disabled ? undefined : onClick}
@@ -427,7 +427,8 @@ function OptionCard({ label, sub, selected, onClick, emoji, disabled, isNarrow }
         gap: 12,
         transition: "all 0.2s ease",
         textAlign: "left",
-        opacity: disabled ? 0.45 : 1,
+        opacity: disabled ? 0.4 : 1,
+        filter: disabled ? "grayscale(0.3)" : "none",
       }}
       type="button"
     >
@@ -438,9 +439,27 @@ function OptionCard({ label, sub, selected, onClick, emoji, disabled, isNarrow }
             fontSize: 14,
             fontWeight: 600,
             fontFamily: "'DM Sans', sans-serif",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
           }}
         >
           {label}
+          {badge && (
+            <span style={{
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "2px 7px",
+              background: "rgba(255,179,71,0.15)",
+              color: "#FFB347",
+              borderRadius: 20,
+              border: "1px solid rgba(255,179,71,0.25)",
+              letterSpacing: 0.3,
+              textTransform: "uppercase",
+            }}>
+              {badge}
+            </span>
+          )}
         </div>
         {sub && (
           <div
@@ -862,8 +881,9 @@ function GedeonOnboarding() {
             <OptionCard
               isNarrow={isNarrow}
               emoji="📱"
-              label="Par SMS (bientôt)"
-              sub="Non disponible dans le backend actuel"
+              label="Par SMS"
+              sub="Connexion rapide par numéro de téléphone"
+              badge="Bientôt"
               selected={false}
               disabled={true}
             />

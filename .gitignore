@@ -25,3 +25,10 @@ Thumbs.db
 
 # Uploads
 uploads/
+
+# Build Vite
+onboarding_dist/
+frontend/node_modules/
+
+# Claude Code
+CLAUDE.md

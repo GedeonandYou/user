@@ -455,6 +455,19 @@ def index():
     return send_from_directory('.', 'index.html')
 
 
+@app.route('/onboarding/')
+@app.route('/onboarding')
+def onboarding():
+    """Sert l'onboarding React (build Vite)"""
+    return send_from_directory('onboarding_dist', 'index.html')
+
+
+@app.route('/onboarding/<path:filename>')
+def onboarding_assets(filename):
+    """Sert les assets statiques du build Vite"""
+    return send_from_directory('onboarding_dist', filename)
+
+
 @app.route('/health')
 def health():
     """Health check"""
