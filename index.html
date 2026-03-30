@@ -2542,6 +2542,7 @@
                 html += '<div class="list-item" onclick="onListItemClick(' + i + ')" data-lat="' + (ev.latitude || '') + '" data-lng="' + (ev.longitude || '') + '" style="border-left:4px solid ' + color + ';">';
                 html += '<span class="list-item-icon">' + icon + '</span>';
                 html += '<div class="list-item-body">';
+                if (ev.relevanceScore > 0) html += '<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-bottom:3px;">⭐ Recommandé</span>';
                 html += '<div class="list-item-title" style="color:' + color + ';">' + title + '</div>';
                 if (date) html += '<div class="list-item-date">📅 ' + date + (showtimes ? ' — ' + showtimes : '') + '</div>';
                 if (location) html += '<div class="list-item-location">📍 ' + location + '</div>';
@@ -2893,7 +2894,8 @@
                         if (j > 0) popupHtml += '<hr style="margin:8px 0;border:none;border-top:1px solid #e5e7eb;">';
                         
                         var eventTitle = event.title || 'Événement';
-                        
+
+                        if (event.relevanceScore > 0) popupHtml += '<div style="display:inline-block;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-bottom:6px;">⭐ Recommandé</div>';
                         popupHtml += '<h3>' + eventTitle + '</h3>';
                         
                         if (event.begin) popupHtml += '<div class="date">' + formatDate(event.begin) + '</div>';
@@ -3121,7 +3123,7 @@
                     showLoginModal();
                     return;
                 }
-                _currentUser = { pseudo: authData.username };
+                _currentUser = { pseudo: authData.username, preferences: authData.preferences || {} };
             } catch (e) {
                 showLoginModal();
                 return;
@@ -3133,6 +3135,18 @@
             }
             initMap();
             setupSliders();
+
+            // Appliquer le rayon depuis les préférences utilisateur
+            var _prefDist = (_currentUser.preferences || {}).distance;
+            var _DIST_TO_KM = { '5km': 5, '20km': 20, '100km': 100, 'national': 200, 'international': 500 };
+            if (_prefDist && _DIST_TO_KM[_prefDist]) {
+                var _prefKm = _DIST_TO_KM[_prefDist];
+                var _sliderVal = Math.max(0, Math.min(100, Math.round(100 * Math.log(_prefKm) / Math.log(10000))));
+                document.getElementById('radiusRange').value = _sliderVal;
+                currentRadiusKm = _prefKm;
+                document.getElementById('radiusValue').textContent = _prefKm;
+            }
+
             updateUserLabel();
 
             // Charger les événements scannés depuis le serveur

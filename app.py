@@ -80,6 +80,50 @@ FILMS_CACHE_TTL = 3600  # 1 heure
 
 SALONS_DATA = []
 
+# Mots-clés par centre d'intérêt pour le scoring de pertinence
+INTEREST_KEYWORDS = {
+    'sport': ['sport', 'sportif', 'marathon', 'course', 'football', 'basketball',
+              'tennis', 'rugby', 'natation', 'cyclisme', 'athlétisme', 'tournoi', 'compétition'],
+    'musique': ['concert', 'musique', 'musical', 'festival', 'orchestre', 'jazz',
+                'rock', 'pop', 'electro', 'chanson', 'chorale', 'opéra', 'récital'],
+    'arts': ['art', 'exposition', 'théâtre', 'musée', 'danse', 'peinture',
+             'sculpture', 'galerie', 'spectacle', 'cirque'],
+    'festivals': ['festival', 'fête', 'célébration', 'carnaval', 'foire'],
+    'gastro': ['gastronomie', 'dégustation', 'marché', 'culinaire', 'cuisine',
+               'vin', 'bière', 'food', 'chocolat'],
+    'nature': ['nature', 'randonnée', 'environnement', 'jardins', 'écologie',
+               'plein air', 'forêt', 'parc'],
+    'business': ['salon', 'conférence', 'professionnel', 'forum', 'networking',
+                 'entrepreneuriat', 'startup', 'business'],
+    'famille': ['famille', 'enfant', 'kid', 'jeunesse', 'parents', 'scolaire'],
+    'bienetre': ['bien-être', 'yoga', 'méditation', 'santé', 'spa', 'relaxation'],
+    'tech': ['technologie', 'numérique', 'innovation', 'informatique', 'digital',
+             'intelligence artificielle', 'tech', 'hackathon'],
+    'mode': ['mode', 'fashion', 'design', 'couture', 'styliste', 'défilé'],
+    'nightlife': ['soirée', 'club', 'nuit', 'discothèque', 'bal'],
+    'patrimoine': ['patrimoine', 'histoire', 'monument', 'historique', 'château',
+                   'abbaye', 'cathédrale'],
+    'cinema': ['cinéma', 'film', 'cinématographique'],
+    'communaute': ['communauté', 'bénévolat', 'solidarité', 'association'],
+    'education': ['conférence', 'formation', 'atelier', 'workshop', 'séminaire', 'cours'],
+    'religion': ['religion', 'spiritualité', 'foi', 'église', 'mosquée', 'temple'],
+}
+
+# Source préférée par intérêt
+INTEREST_SOURCES = {
+    'cinema': ['Allocine'],
+    'business': ['EventsEye'],
+}
+
+# Correspondance préférence distance → rayon km
+DISTANCE_TO_KM = {
+    '5km': 5,
+    '20km': 20,
+    '100km': 100,
+    'national': 200,
+    'international': 500,
+}
+
 
 # ============================================================================
 # FONCTIONS UTILITAIRES (géo, data loading)
@@ -182,6 +226,44 @@ def parse_salon_date(date_str):
         return None
     except Exception:
         return None
+
+
+def score_event(event, preferences):
+    """Score de pertinence d'un événement selon les préférences utilisateur (0-10)."""
+    if not preferences:
+        return 0
+    interests = preferences.get('interests') or []
+    if not interests:
+        return 0
+
+    score = 0
+    title = (event.get('title') or '').lower()
+    description = (event.get('description') or '').lower()
+    text = title + ' ' + description
+    source = event.get('source', '')
+
+    for interest in interests:
+        for kw in INTEREST_KEYWORDS.get(interest, []):
+            if kw in text:
+                score += 2
+                break
+        if source in INTEREST_SOURCES.get(interest, []):
+            score += 2
+
+    return min(score, 10)
+
+
+def get_user_preferences():
+    """Récupère les préférences de l'utilisateur connecté depuis la session."""
+    return session.get('user_preferences') or {}
+
+
+def get_default_radius_from_prefs(preferences):
+    """Rayon par défaut selon la préférence distance de l'utilisateur."""
+    if not preferences:
+        return RADIUS_KM_DEFAULT
+    dist_pref = preferences.get('distance')
+    return DISTANCE_TO_KM.get(dist_pref, RADIUS_KM_DEFAULT)
 
 
 def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
@@ -425,6 +507,10 @@ def init_user_tables():
                         ALTER TABLE users ADD CONSTRAINT users_pseudo_pseudo_number_key UNIQUE (pseudo, pseudo_number);
                     END IF;
                 END IF;
+                -- Ajouter colonne preferences JSONB si elle n'existe pas
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='preferences') THEN
+                    ALTER TABLE users ADD COLUMN preferences JSONB DEFAULT '{}';
+                END IF;
                 -- Agrandir pseudo si nécessaire
                 ALTER TABLE users ALTER COLUMN pseudo TYPE VARCHAR(25);
             END $$;
@@ -453,6 +539,19 @@ def init_user_tables():
 def index():
     """Sert l'interface utilisateur"""
     return send_from_directory('.', 'index.html')
+
+
+@app.route('/onboarding/')
+@app.route('/onboarding')
+def onboarding():
+    """Sert l'onboarding React (build Vite)"""
+    return send_from_directory('onboarding_dist', 'index.html')
+
+
+@app.route('/onboarding/<path:filename>')
+def onboarding_assets(filename):
+    """Sert les assets statiques du build Vite"""
+    return send_from_directory('onboarding_dist', filename)
 
 
 @app.route('/health')
@@ -584,7 +683,7 @@ def login():
         cur = conn.cursor()
 
         cur.execute(
-            "SELECT id, pseudo, pseudo_number, email, password_hash, email_confirmed FROM users WHERE email = %s",
+            "SELECT id, pseudo, pseudo_number, email, password_hash, email_confirmed, COALESCE(preferences, '{}') as preferences FROM users WHERE email = %s",
             (email,)
         )
         user = cur.fetchone()
@@ -620,6 +719,7 @@ def login():
         session['user_id'] = user['id']
         session['user_pseudo'] = display_name
         session['user_email'] = user['email']
+        session['user_preferences'] = user.get('preferences') or {}
 
         print(f"✅ Login: {display_name} ({email})")
 
@@ -650,13 +750,58 @@ def check_login():
         return jsonify({
             "status": "success",
             "logged_in": True,
-            "username": session.get('user_pseudo')
+            "username": session.get('user_pseudo'),
+            "preferences": session.get('user_preferences', {})
         }), 200
     else:
         return jsonify({
             "status": "success",
             "logged_in": False
         }), 200
+
+
+@app.route('/api/auth/preferences', methods=['GET'])
+@require_auth
+def get_preferences():
+    """Récupère les préférences de l'utilisateur connecté."""
+    try:
+        user_id = session.get('user_id')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COALESCE(preferences, '{}') as preferences FROM users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        prefs = row['preferences'] if row else {}
+        return jsonify({"status": "success", "preferences": prefs}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route('/api/auth/preferences', methods=['POST'])
+@require_auth
+def save_preferences():
+    """Sauvegarde les préférences de l'utilisateur connecté."""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        preferences = data.get('preferences', {})
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET preferences = %s WHERE id = %s",
+            (json.dumps(preferences), user_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        session['user_preferences'] = preferences
+        print(f"⚙️ Préférences sauvées: user_id={user_id}, interests={preferences.get('interests', [])}")
+        return jsonify({"status": "success", "message": "Préférences sauvegardées"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 @app.route('/api/auth/resend-confirmation', methods=['POST'])
@@ -1009,14 +1154,17 @@ def get_nearby_events():
     try:
         center_lat = request.args.get('lat', type=float)
         center_lon = request.args.get('lon', type=float)
-        radius_km = request.args.get('radiusKm', RADIUS_KM_DEFAULT, type=int)
+        prefs = get_user_preferences()
+        radius_km = request.args.get('radiusKm', get_default_radius_from_prefs(prefs), type=int)
         days_ahead = request.args.get('days', DAYS_AHEAD_DEFAULT, type=int)
 
         if center_lat is None or center_lon is None:
             return jsonify({"status": "error", "message": "Paramètres 'lat' et 'lon' requis"}), 400
 
         events = fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead)
-        events.sort(key=lambda e: (e.get("distanceKm") or 999, e.get("begin") or ""))
+        for event in events:
+            event['relevanceScore'] = score_event(event, prefs)
+        events.sort(key=lambda e: (-e.get('relevanceScore', 0), e.get("distanceKm") or 999, e.get("begin") or ""))
 
         return jsonify({
             "status": "success",
@@ -1044,7 +1192,8 @@ def get_nearby_cinema():
     try:
         center_lat = request.args.get('lat', type=float)
         center_lon = request.args.get('lon', type=float)
-        radius_km = request.args.get('radiusKm', RADIUS_KM_DEFAULT, type=int)
+        prefs = get_user_preferences()
+        radius_km = request.args.get('radiusKm', get_default_radius_from_prefs(prefs), type=int)
         batch = request.args.get('batch', 0, type=int)
         batch_size = request.args.get('batchSize', 5, type=int)
 
@@ -1156,10 +1305,12 @@ def get_nearby_cinema():
                             "source": "Allocine",
                             "description": " • ".join(desc_parts) if desc_parts else "",
                         }
+                        event['relevanceScore'] = score_event(event, prefs)
                         all_events.append(event)
             except Exception as e:
                 print(f"      ❌ Erreur {cinema.get('name', '?')[:20]}: {e}")
 
+        all_events.sort(key=lambda e: (-e.get('relevanceScore', 0), e.get('distanceKm') or 999))
         return jsonify({
             "status": "success",
             "center": {"latitude": center_lat, "longitude": center_lon},
@@ -1188,7 +1339,8 @@ def get_nearby_salons():
     try:
         center_lat = request.args.get('lat', type=float)
         center_lon = request.args.get('lon', type=float)
-        radius_km = request.args.get('radiusKm', RADIUS_KM_DEFAULT, type=int)
+        prefs = get_user_preferences()
+        radius_km = request.args.get('radiusKm', get_default_radius_from_prefs(prefs), type=int)
 
         if center_lat is None or center_lon is None:
             return jsonify({"status": "error", "message": "Paramètres 'lat' et 'lon' requis"}), 400
@@ -1210,7 +1362,7 @@ def get_nearby_salons():
             salon_date = parse_salon_date(salon.get('dates', ''))
             if salon_date and salon_date < today:
                 continue
-            nearby_salons.append({
+            salon_event = {
                 "uid": f"salon-{hash(salon['name']) % 100000}",
                 "title": salon['name'],
                 "begin": salon.get('dates', ''),
@@ -1223,9 +1375,11 @@ def get_nearby_salons():
                 "frequency": salon.get('frequency', ''),
                 "openagendaUrl": salon.get('url', ''),
                 "source": "EventsEye"
-            })
+            }
+            salon_event['relevanceScore'] = score_event(salon_event, prefs)
+            nearby_salons.append(salon_event)
 
-        nearby_salons.sort(key=lambda s: s['distanceKm'])
+        nearby_salons.sort(key=lambda s: (-s.get('relevanceScore', 0), s['distanceKm']))
 
         return jsonify({
             "status": "success",
