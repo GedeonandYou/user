@@ -46,9 +46,9 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
-  saveOnboarding: (payload) =>
-    apiFetch('/api/profile/onboarding', {
+  savePreferences: (preferences) =>
+    apiFetch('/api/auth/preferences', {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ preferences }),
     }),
 }

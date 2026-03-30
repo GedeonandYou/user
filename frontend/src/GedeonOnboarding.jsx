@@ -165,14 +165,14 @@ export function GedeonOnboarding() {
 
   async function finalizeOnboarding() {
     setSaving(true)
-    const payload = {
-      firstName: firstName.trim(), lastName: lastName.trim(),
-      profile, notifChoice, savedAt: new Date().toISOString(),
-    }
+    const preferences = { ...profile, notifications: notifChoice }
     try {
-      localStorage.setItem('gedeon_onboarding', JSON.stringify(payload))
+      localStorage.setItem('gedeon_onboarding', JSON.stringify({
+        firstName: firstName.trim(), lastName: lastName.trim(),
+        preferences, savedAt: new Date().toISOString(),
+      }))
       localStorage.setItem('gedeon_onboarded', 'true')
-      try { await api.saveOnboarding(payload) } catch (_) { /* ignore if endpoint missing */ }
+      try { await api.savePreferences(preferences) } catch (_) { /* ignore if endpoint missing */ }
       goNext()
     } finally {
       setSaving(false)

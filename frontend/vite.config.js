@@ -8,4 +8,9 @@ export default defineConfig({
     outDir: '../onboarding_dist',
     emptyOutDir: true,
   },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8000',
+    },
+  },
 })
