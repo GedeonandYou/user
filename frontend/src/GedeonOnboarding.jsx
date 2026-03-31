@@ -60,12 +60,33 @@ export function GedeonOnboarding() {
   const [notifChoice, setNotifChoice] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  // Auto-skip auth if already logged in
+  // Auto-skip: si déjà connecté, charger les préférences existantes
   useEffect(() => {
     ;(async () => {
       try {
         const chk = await api.checkSession()
-        if (chk?.logged_in) setStep(3)
+        if (!chk?.logged_in) return
+        const prefs = chk.preferences || {}
+        if (prefs.interests && prefs.interests.length > 0) {
+          // Préférences existantes → pré-remplir et aller directement à la page finale
+          setProfile({
+            interests:   prefs.interests    || [],
+            sportType:   prefs.sportType    ?? null,
+            sportPrefs:  prefs.sportPrefs   || [],
+            musicGenres: prefs.musicGenres  || [],
+            companion:   prefs.companion    ?? null,
+            distance:    prefs.distance     ?? null,
+            budget:      prefs.budget       ?? null,
+            frequency:   prefs.frequency    ?? null,
+            when:        prefs.when         || [],
+            discovery:   prefs.discovery    ?? null,
+            ambiance:    prefs.ambiance     ?? null,
+          })
+          setNotifChoice(prefs.notifications ?? null)
+          setStep(16) // StepDone
+        } else {
+          setStep(3) // StepIdentity (auth déjà faite)
+        }
       } catch (_) { /* ignore */ }
     })()
   }, [])

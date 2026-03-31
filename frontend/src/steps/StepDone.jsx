@@ -16,13 +16,13 @@ export function StepDone({ frame, nav, firstName, profile, setStep }) {
             fontSize: 42, boxShadow: '0 12px 40px rgba(255,107,53,0.35)',
           }}>🎉</div>
           <h2 style={{
-            color: '#fff', fontSize: isNarrow ? 24 : 28, fontWeight: 800,
+            color: 'var(--text)', fontSize: isNarrow ? 24 : 28, fontWeight: 800,
             margin: '0 0 8px', fontFamily: "'DM Sans', sans-serif",
           }}>
-            Bienvenue{firstName ? ` ${firstName}` : ''} !
+            {firstName ? `Bonjour ${firstName} !` : 'Ton profil'}
           </h2>
-          <p style={{ color: '#888', fontSize: 14, lineHeight: 1.6, margin: '0 0 32px' }}>
-            Ton profil est prêt. GEDEON va maintenant te proposer des événements sur mesure.
+          <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6, margin: '0 0 32px' }}>
+            Tes préférences sont enregistrées. Tu peux les modifier à tout moment.
           </p>
           <div style={{
             background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
@@ -48,11 +48,13 @@ export function StepDone({ frame, nav, firstName, profile, setStep }) {
           <PrimaryButton onClick={() => (window.location.href = '/')} isNarrow={isNarrow}>
             Explorer GEDEON →
           </PrimaryButton>
-          <button onClick={() => setStep(0)} type="button" style={{
-            marginTop: 10, background: 'none', border: 'none',
-            color: '#555', fontSize: 12, cursor: 'pointer',
+          <button onClick={() => setStep(5)} type="button" style={{
+            marginTop: 10, background: 'none', border: '1px solid var(--profile-card-border)',
+            color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer',
+            padding: '8px 16px', borderRadius: 10, width: '100%',
+            fontFamily: "'DM Sans', sans-serif",
           }}>
-            Recommencer l'onboarding
+            ✏️ Modifier mes préférences
           </button>
         </div>
       </StepContainer>
