@@ -27,6 +27,44 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" crossorigin="anonymous" />
 
     <style>
+        /* ── THEME VARIABLES ── */
+        :root {
+            --map-bg: #f5f5f5;
+            --panel-bg: #ffffff;
+            --panel-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --panel-border: #e5e7eb;
+            --text: #111827;
+            --text-sub: #666666;
+            --navbar-bg: #ffffff;
+            --navbar-border: rgba(0,0,0,0.08);
+            --stats-bg: #f9fafb;
+            --list-bg: #ffffff;
+            --list-item-bg: #ffffff;
+            --list-item-border: #f3f4f6;
+            --list-item-hover: #f9fafb;
+            --input-bg: #ffffff;
+            --input-border: #d1d5db;
+            --accent: #FF6B35;
+        }
+        [data-theme="dark"] {
+            --map-bg: #0d0d1a;
+            --panel-bg: #1a1a2e;
+            --panel-shadow: 0 2px 10px rgba(0,0,0,0.4);
+            --panel-border: rgba(255,255,255,0.08);
+            --text: #f0f0f0;
+            --text-sub: #999999;
+            --navbar-bg: #12122a;
+            --navbar-border: rgba(255,255,255,0.08);
+            --stats-bg: #1a1a2e;
+            --list-bg: #0d0d1a;
+            --list-item-bg: #1a1a2e;
+            --list-item-border: rgba(255,255,255,0.06);
+            --list-item-hover: rgba(255,255,255,0.04);
+            --input-bg: rgba(255,255,255,0.06);
+            --input-border: rgba(255,255,255,0.15);
+            --accent: #FF6B35;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -35,132 +73,299 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
+            background: var(--map-bg);
+            transition: background 0.3s ease;
         }
 
-        #header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        #header img {
-            max-height: 80px;
-            object-fit: contain;
-        }
-
-        #controls {
-            background: white;
-            padding: 8px 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            position: relative;
-        }
-
-        .control-group {
+        /* ── NAVBAR ── */
+        #navbar {
+            height: 56px;
             display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 6px;
+            padding: 0 14px;
+            gap: 10px;
+            background: var(--navbar-bg);
+            border-bottom: 1px solid var(--navbar-border);
+            box-shadow: 0 1px 8px rgba(0,0,0,0.08);
+            position: relative;
+            z-index: 100;
+            transition: background 0.3s ease;
         }
 
-        .control-group:last-child {
-            margin-bottom: 0;
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
         }
 
-        .slider-group {
+        .nav-logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #FF6B35, #FFB347);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 900;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .nav-logo-text {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: 1.5px;
+            white-space: nowrap;
+        }
+
+        .nav-sliders {
+            flex: 1;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            min-width: 0;
+        }
+
+        .nav-slider-group {
             display: flex;
             align-items: center;
             gap: 6px;
             flex: 1;
-            min-width: 150px;
+            min-width: 0;
         }
 
-        .slider-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #666;
-            min-width: 50px;
+        .nav-slider-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .nav-slider-value {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent);
+            white-space: nowrap;
+            flex-shrink: 0;
+            min-width: 38px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            min-width: 0;
+            accent-color: var(--accent);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
         }
 
         button {
             border: none;
-            border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 12px;
-            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
-            background: #667eea;
-            color: white;
+            transition: all 0.2s;
             flex-shrink: 0;
-        }
-
-        button:hover:not(:disabled) {
-            background: #5568d3;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
         }
 
         button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
-        #btnMyPosition,
-        #resetViewBtn {
-            width: 32px;
-            height: 32px;
+
+        #btnMyPosition, #resetViewBtn, #btnSearch, #btnTheme {
+            width: 34px;
+            height: 34px;
             padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 17px;
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--navbar-border);
+            border-radius: 8px;
+        }
+
+        #btnMyPosition:hover:not(:disabled),
+        #resetViewBtn:hover:not(:disabled),
+        #btnSearch:hover:not(:disabled),
+        #btnTheme:hover:not(:disabled) {
+            background: rgba(255,107,53,0.1);
+            border-color: rgba(255,107,53,0.4);
+            transform: none;
+            box-shadow: none;
+        }
+
+        #btnSearch.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
         }
 
         #btnListView {
-            height: 32px;
-            padding: 0 8px;
+            height: 34px;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 700;
+            background: rgba(16,185,129,0.1);
+            color: #10b981;
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 8px;
+            white-space: nowrap;
+        }
+
+        #btnListView:hover:not(:disabled) {
+            background: #10b981;
+            color: white;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* User dropdown */
+        .nav-user {
+            position: relative;
+        }
+
+        .nav-user-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            height: 34px;
+            padding: 0 10px 0 6px;
+            background: rgba(255,107,53,0.08);
+            border: 1px solid rgba(255,107,53,0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-user-btn:hover {
+            background: rgba(255,107,53,0.15);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .nav-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FF6B35, #FFB347);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 11px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
         }
 
-
-        .version-info {
-            font-size: 9px;
-            color: #999;
-            display: block;
-            text-align: center;
+        #userLabel {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            max-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .buttons-group {
+        .nav-caret {
+            font-size: 9px;
+            color: var(--text-sub);
+        }
+
+        .nav-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--navbar-bg);
+            border: 1px solid var(--navbar-border);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            min-width: 160px;
+            z-index: 500;
+            overflow: hidden;
+        }
+
+        .nav-dropdown.open { display: block; }
+
+        .nav-dropdown-divider {
+            font-size: 11px;
+            color: var(--text-sub);
+            padding: 10px 14px 4px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--navbar-border);
+        }
+
+        .nav-dropdown-item {
             display: flex;
-            gap: 6px;
-            flex-shrink: 0;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--text);
+            cursor: pointer;
+            transition: background 0.15s;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .nav-dropdown-item:hover {
+            background: rgba(255,107,53,0.08);
+            transform: none;
+            box-shadow: none;
+        }
+
+        #btnLogout {
+            color: #ef4444;
+        }
+
+        #btnLogout:hover {
+            background: rgba(239,68,68,0.08);
+            transform: none;
+            box-shadow: none;
         }
 
         /* Search panel */
         #searchPanel {
             display: none;
-            padding: 8px 12px;
-            border-top: 1px solid #e5e7eb;
+            padding: 8px 14px;
+            background: var(--navbar-bg);
+            border-bottom: 1px solid var(--navbar-border);
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s ease;
         }
-        #searchPanel.open { display: flex; align-items: center; gap: 8px; }
+        #searchPanel.open { display: flex; }
         #searchInput {
             flex: 1;
-            padding: 6px 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text);
+            border-radius: 8px;
             font-size: 13px;
             font-family: inherit;
             outline: none;
             transition: border-color 0.2s;
         }
         #searchInput:focus {
-            border-color: #f97316;
-            box-shadow: 0 0 0 3px rgba(249,115,22,0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(255,107,53,0.12);
         }
         #searchClear {
             background: none;
@@ -168,213 +373,93 @@
             font-size: 18px;
             cursor: pointer;
             padding: 4px;
-            color: #999;
+            color: var(--text-sub);
             line-height: 1;
         }
-        #searchClear:hover { color: #333; background: none; transform: none; box-shadow: none; }
-        #btnSearch {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            background: #f3f4f6;
-            color: #333;
-            border-radius: 6px;
-            border: 1px solid #d1d5db;
-        }
-        #btnSearch:hover { background: #e5e7eb; transform: none; box-shadow: none; }
-        #btnSearch.active {
-            background: #f97316;
-            color: white;
-            border-color: #f97316;
-        }
+        #searchClear:hover { color: var(--text); background: none; transform: none; box-shadow: none; }
 
-        .top-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-        }
-
-        .sliders-row {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 1;
-        }
-
-        input[type="range"] {
-            flex: 1;
-            max-width: 120px;
-        }
-
-        .slider-value {
-            font-size: 12px;
-            font-weight: bold;
-            color: #667eea;
-            min-width: 50px;
-        }
-
+        /* Status pill */
         .status {
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 500;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
             transition: all 0.3s;
             flex-shrink: 0;
+            white-space: nowrap;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-
-        .status.waiting { background: #fef3c7; color: #92400e; }
-        .status.active  { background: #d1fae5; color: #065f46; }
-        .status.error   { background: #fee2e2; color: #991b1b; }
-        
-        .status.loading {
-            animation: blinkStatus 1s ease-in-out infinite;
-        }
-
+        .status.waiting { background: rgba(251,191,36,0.15); color: #b45309; }
+        .status.active  { background: rgba(34,197,94,0.15); color: #15803d; }
+        .status.error   { background: rgba(239,68,68,0.15); color: #dc2626; }
+        [data-theme="dark"] .status.waiting { color: #fbbf24; }
+        [data-theme="dark"] .status.active  { color: #4ade80; }
+        [data-theme="dark"] .status.error   { color: #f87171; }
+        .status.loading { animation: blinkStatus 1s ease-in-out infinite; }
         @keyframes blinkStatus {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.98); }
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         #stats {
-            background: white;
-            padding: 6px 12px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background: var(--stats-bg);
+            padding: 5px 14px;
+            border-bottom: 1px solid var(--navbar-border);
+            transition: background 0.3s ease;
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 6px;
             align-items: center;
         }
 
         .source-toggle {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 8px;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid #e2e8f0;
-            background: #f8fafc;
+            transition: all 0.2s;
+            border: 1.5px solid var(--navbar-border);
+            background: transparent;
             user-select: none;
+            flex: 1;
+            min-width: 0;
         }
 
-        .source-toggle:hover {
-            border-color: #cbd5e1;
-        }
+        .source-toggle:hover { border-color: rgba(0,0,0,0.2); }
+        [data-theme="dark"] .source-toggle:hover { border-color: rgba(255,255,255,0.2); }
+        .source-toggle.active { background: rgba(0,0,0,0.04); }
+        [data-theme="dark"] .source-toggle.active { background: rgba(255,255,255,0.06); }
+        .source-toggle.inactive { opacity: 0.4; }
 
-        .source-toggle.active {
-            border: 2px solid #000;
-            background: white;
-        }
+        .toggle-value { font-size: 14px; font-weight: 800; }
+        #toggle-events .toggle-value { color: #3b82f6; }
+        #toggle-cinema .toggle-value { color: #dc2626; }
+        #toggle-salons .toggle-value { color: #22c55e; }
+        #toggle-scanned .toggle-value { color: #f97316; font-size: 12px; white-space: nowrap; }
+        #toggle-scanned .toggle-icon { color: #facc15; }
+        .toggle-label { font-size: 10px; color: var(--text-sub); white-space: nowrap; }
+        .toggle-check { font-size: 12px; color: #22c55e; font-weight: bold; margin-left: auto; }
+        .source-toggle.inactive .toggle-check { visibility: hidden; }
 
-        .source-toggle.inactive {
-            opacity: 0.5;
-            background: #f1f5f9;
-        }
+        #toggle-events.exclusive { border-color: #3b82f6; background: rgba(59,130,246,0.08); }
+        #toggle-cinema.exclusive { border-color: #dc2626; background: rgba(220,38,38,0.08); }
+        #toggle-salons.exclusive { border-color: #22c55e; background: rgba(34,197,94,0.08); }
+        #toggle-scanned.exclusive { border-color: #f97316; background: rgba(249,115,22,0.08); }
 
-        /* 🎯 Bordure noire pour les toggles actifs */
-        #toggle-events.active,
-        #toggle-cinema.active,
-        #toggle-salons.active,
-        #toggle-scanned.active {
-            border: 2px solid #000;
-        }
+        /* Pour moi toggle */
+        #toggle-for-you { border-color: rgba(255,107,53,0.3); flex: none; }
+        #toggle-for-you.active { background: rgba(255,107,53,0.12); border-color: #FF6B35; }
+        #toggle-for-you .toggle-label { color: #FF6B35; font-weight: 600; }
 
-        .toggle-value {
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        /* 🎯 COULEURS DISTINCTES : Bleu pour événements, Rouge pour cinéma, Vert pour salons, Orange pour scannés */
-        #toggle-events .toggle-value {
-            color: #3b82f6;  /* Bleu vif */
-        }
-        
-        #toggle-cinema .toggle-value {
-            color: #dc2626;  /* Rouge cinéma */
-        }
-        
-        #toggle-salons .toggle-value {
-            color: #22c55e;  /* Vert salons */
-        }
-        
-        #toggle-scanned .toggle-value {
-            color: #f97316;  /* Orange vif - plus lisible */
-            font-size: 14px; /* Plus petit car format "123/456" */
-            white-space: nowrap;
-        }
-        
-        #toggle-scanned .toggle-icon {
-            color: #facc15;  /* Jaune lumineux */
-        }
-        
-        #toggle-scanned.active {
-            background: #fefce8;  /* Fond jaune très clair */
-        }
-
-        .toggle-label {
-            font-size: 10px;
-            color: #666;
-        }
-
-        .toggle-check {
-            font-size: 14px;
-            color: #22c55e;
-            font-weight: bold;
-            margin-left: 3px;
-        }
-
-        .source-toggle.inactive .toggle-check {
-            visibility: hidden;
-        }
-        
-        /* 🎯 MODE EXCLUSIF : bordure colorée + ombre */
-        .source-toggle.exclusive {
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.5);
-            transform: scale(1.05);
-        }
-        
-        #toggle-events.exclusive {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
-        }
-        
-        #toggle-cinema.exclusive {
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.5);
-        }
-        
-        #toggle-salons.exclusive {
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.5);
-        }
-        
-        #toggle-scanned.exclusive {
-            box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.5);
-            background: #fef9c3;  /* Fond jaune clair en mode exclusif */
-        }
-        
-        .source-toggle.loading {
-            animation: pulseLoading 1.5s ease-in-out infinite;
-        }
-        
+        .source-toggle.loading { animation: pulseLoading 1.5s ease-in-out infinite; }
         @keyframes pulseLoading {
-            0%, 100% { 
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
-            }
-            50% { 
-                transform: scale(1.05);
-                box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
-            }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
         }
-        
-        .source-toggle.loading .toggle-value {
-            animation: blinkValue 0.8s ease-in-out infinite;
-        }
-        
+        .source-toggle.loading .toggle-value { animation: blinkValue 0.8s ease-in-out infinite; }
         @keyframes blinkValue {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
@@ -382,7 +467,7 @@
 
         #map-container {
             position: relative;
-            height: calc(100vh - 150px);
+            height: calc(100vh - 98px);
             width: 100%;
         }
 
@@ -806,116 +891,36 @@
         }
 
         @media (max-width: 768px) {
-            #header h1 { font-size: 18px; }
-            #header p { font-size: 11px; }
-            #header img { max-height: 60px; }
-            
-            #controls {
-                padding: 8px;
-            }
-            
-            .control-group { 
-                flex-direction: column;
-                align-items: stretch;
-                gap: 8px;
-            }
-            
-            /* Top row: boutons + status sur lignes séparées sur mobile */
-            .top-row {
-                flex-direction: column;
-                gap: 8px;
-            }
-            
-            .buttons-group {
-                display: flex;
-                gap: 8px;
-                justify-content: flex-start;
-                width: 100%;
-            }
-            
-            #btnMyPosition,
-            #resetViewBtn,
-            #btnSearch {
-                width: 44px !important;
-                height: 44px;
-                font-size: 22px;
-                flex-shrink: 0;
-            }
-
-            #btnListView {
-                height: 44px;
-                font-size: 12px;
-            }
-            
-            /* Status sur toute la largeur sur mobile */
-            .status {
-                width: 100%;
-                text-align: center;
-                margin-left: 0;
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-            
-            /* Sliders sur toute la largeur */
-            .sliders-row {
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-                width: 100%;
-            }
-            
-            .slider-group { 
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                width: 100%;
-            }
-            
-            .slider-group .slider-label {
-                min-width: 55px;
-                font-size: 12px;
-            }
-            
-            .slider-group input[type="range"] {
-                flex: 1;
-                max-width: none;
-                min-width: 0;
-            }
-            
-            .slider-group .slider-value {
-                min-width: 55px;
-                text-align: right;
-            }
-            
-            /* Stats */
-            #stats { 
-                gap: 6px; 
-                padding: 6px 8px;
-                justify-content: space-around;
-            }
-            
-            .source-toggle {
+            #navbar {
+                flex-wrap: wrap;
+                height: auto;
+                min-height: 52px;
                 padding: 6px 10px;
-                flex: 1;
-                min-width: 0;
+                gap: 6px;
             }
-            
-            .toggle-value {
-                font-size: 16px;
+            .nav-logo-text { display: none; }
+            .nav-sliders {
+                order: 10;
+                width: 100%;
+                flex-basis: 100%;
+                padding: 2px 0 4px;
+                gap: 10px;
             }
-
-            #toggle-scanned .toggle-value {
-                font-size: 12px; /* Encore plus petit sur mobile pour "123/456" */
+            .status { display: none; }
+            #btnMyPosition, #resetViewBtn, #btnSearch, #btnTheme {
+                width: 38px !important;
+                height: 38px !important;
+                font-size: 19px !important;
             }
-
-            .toggle-label {
-                font-size: 9px;
-            }
-
-            /* Map */
-            #map-container { 
-                height: calc(100vh - 200px); 
-            }
+            #btnListView { height: 38px; }
+            .nav-user-btn { height: 38px; }
+            #stats { gap: 5px; padding: 5px 10px; }
+            .source-toggle { padding: 4px 8px; }
+            .toggle-value { font-size: 13px; }
+            #toggle-scanned .toggle-value { font-size: 11px; }
+            .toggle-label { font-size: 9px; }
+            #map-container { height: calc(100vh - 130px); }
+            #list-container { height: calc(100vh - 130px); }
             
             #map-legend {
                 bottom: 60px;
@@ -944,26 +949,16 @@
         
         /* Très petits écrans (iPhone SE, etc.) */
         @media (max-width: 380px) {
-            .slider-group .slider-label {
-                min-width: 45px;
-                font-size: 11px;
-            }
-            
-            .slider-group .slider-value {
-                min-width: 45px;
-                font-size: 11px;
-            }
-            
             .source-toggle {
                 padding: 5px 8px;
             }
-            
+
             .toggle-value {
                 font-size: 14px;
             }
 
             #toggle-scanned .toggle-value {
-                font-size: 10px; /* Très petit sur iPhone SE pour "123/456" */
+                font-size: 10px;
             }
 
             .toggle-label {
@@ -992,7 +987,7 @@
         /* Liste des scans */
         #list-container {
             position: relative;
-            height: calc(100vh - 150px);
+            height: calc(100vh - 98px);
             width: 100%;
             overflow-y: auto;
             background: #f3f4f6;
@@ -1046,7 +1041,7 @@
         .list-item-title {
             font-weight: 600;
             font-size: 14px;
-            color: #111827;
+            color: var(--text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1054,13 +1049,13 @@
 
         .list-item-date {
             font-size: 12px;
-            color: #6b7280;
+            color: var(--text-sub);
             margin-top: 2px;
         }
 
         .list-item-location {
             font-size: 12px;
-            color: #9ca3af;
+            color: var(--text-sub);
             margin-top: 2px;
             white-space: nowrap;
             overflow: hidden;
@@ -1075,10 +1070,6 @@
         }
 
         @media (max-width: 768px) {
-            #list-container {
-                height: calc(100vh - 200px);
-            }
-
             .list-item {
                 padding: 10px;
                 min-height: 44px;
@@ -1087,74 +1078,72 @@
     </style>
 </head>
 <body>
-    <div id="header">
-        <img src="gedeon_logo_genz_light_1400x400.jpg" alt="GEDEON - Agenda global des événements" style="width:100%; height:auto; display:block;">
-    </div>
-
-    <div id="controls">
-        <div class="control-group">
-            <div class="top-row">
-                <div class="buttons-group">
-                    <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
-                        <button id="btnMyPosition" onclick="getUserLocation()" title="Ma position">📍</button>
-                        <span id="userLabel" style="font-size:8px;color:#999;white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis;"></span>
-                    </div>
-                    <button onclick="resetMapView()" id="resetViewBtn" style="display:none;" title="Réinitialiser la vue">←</button>
-                    <button id="btnSearch" onclick="toggleSearchPanel()" title="Rechercher">🔍</button>
-                    <button id="btnListView" onclick="toggleListView()" title="Basculer Liste/Carte" style="background:#10b981;color:white;border-radius:4px;white-space:nowrap;">Liste</button>
-                    <button id="btnLogout" onclick="doLogout()" title="Déconnexion" style="background:#ef4444;color:white;border-radius:4px;white-space:nowrap;font-size:11px;">Déconnexion</button>
-                </div>
-                <div class="status" id="status">Maintenez appuyé sur la carte !!!</div>
-                <span class="version-info">GEDEON Lecture Seule • 02/02/2026</span>
+    <nav id="navbar">
+        <div class="nav-logo">
+            <div class="nav-logo-icon">G</div>
+            <span class="nav-logo-text">GEDEON</span>
+        </div>
+        <div class="nav-sliders">
+            <div class="nav-slider-group" id="radiusGroup" style="display:none;">
+                <span class="nav-slider-label">Rayon</span>
+                <input type="range" id="radiusRange" min="0" max="100" value="37" step="1">
+                <span class="nav-slider-value"><span id="radiusValue">30</span>km</span>
             </div>
-            <div id="searchPanel">
-                <input type="text" id="searchInput" placeholder="Titre, lieu, ville..." autocomplete="off" oninput="onSearchInput()">
-                <button id="searchClear" onclick="clearSearch()" title="Effacer">✕</button>
+            <div class="nav-slider-group">
+                <span class="nav-slider-label">Période</span>
+                <input type="range" id="daysRange" min="0" max="100" value="39" step="1">
+                <span class="nav-slider-value"><span id="daysValue">10</span>j</span>
             </div>
-
-            <div class="sliders-row">
-                <div class="slider-group" id="radiusGroup" style="display:none;">
-                    <span class="slider-label">Rayon !!:</span>
-                    <input type="range" id="radiusRange" min="0" max="100" value="37" step="1">
-                    <span class="slider-value"><span id="radiusValue">30</span> km</span>
-                </div>
-
-                <div class="slider-group">
-                    <span class="slider-label">Période:</span>
-                    <input type="range" id="daysRange" min="0" max="100" value="39" step="1">
-                    <span class="slider-value"><span id="daysValue">10</span> jours</span>
+        </div>
+        <div class="status" id="status">…</div>
+        <div class="nav-actions">
+            <button id="btnMyPosition" onclick="getUserLocation()" title="Ma position">📍</button>
+            <button onclick="resetMapView()" id="resetViewBtn" style="display:none;" title="Vue initiale">↩</button>
+            <button id="btnSearch" onclick="toggleSearchPanel()" title="Rechercher">🔍</button>
+            <button id="btnListView" onclick="toggleListView()" title="Basculer Liste/Carte">Liste</button>
+            <button id="btnTheme" onclick="toggleTheme()" title="Mode clair/sombre">☀️</button>
+            <div class="nav-user">
+                <button class="nav-user-btn" onclick="toggleUserDropdown()" type="button">
+                    <div class="nav-avatar" id="navAvatar">?</div>
+                    <span id="userLabel"></span>
+                    <span class="nav-caret">▾</span>
+                </button>
+                <div class="nav-dropdown" id="navDropdown">
+                    <div class="nav-dropdown-divider" id="navDropdownPseudo"></div>
+                    <button class="nav-dropdown-item" id="btnLogout" onclick="doLogout()">🚪 Déconnexion</button>
                 </div>
             </div>
         </div>
+    </nav>
+
+    <div id="searchPanel">
+        <input type="text" id="searchInput" placeholder="Titre, lieu, ville..." autocomplete="off" oninput="onSearchInput()">
+        <button id="searchClear" onclick="clearSearch()" title="Effacer">✕</button>
     </div>
 
     <div id="stats">
         <div class="source-toggle active" id="toggle-events" onclick="toggleSource('events')">
-            <div>
-                <div class="toggle-value" id="events-count">0</div>
-                <div class="toggle-label">Événements</div>
-            </div>
+            <div class="toggle-value" id="events-count">0</div>
+            <div class="toggle-label">Événements</div>
             <span class="toggle-check">✓</span>
         </div>
         <div class="source-toggle active" id="toggle-cinema" onclick="toggleCinema()">
-            <div>
-                <div class="toggle-value" id="cinema-count">0</div>
-                <div class="toggle-label">Films</div>
-            </div>
+            <div class="toggle-value" id="cinema-count">0</div>
+            <div class="toggle-label">Films</div>
             <span class="toggle-check">✓</span>
         </div>
         <div class="source-toggle active" id="toggle-salons" onclick="toggleSalons()">
-            <div>
-                <div class="toggle-value" id="salons-count">0</div>
-                <div class="toggle-label">Salons</div>
-            </div>
+            <div class="toggle-value" id="salons-count">0</div>
+            <div class="toggle-label">Salons</div>
             <span class="toggle-check">✓</span>
         </div>
         <div class="source-toggle active" id="toggle-scanned" onclick="toggleScanned()">
-            <div>
-                <div class="toggle-value" id="scanned-count">0/0</div>
-                <div class="toggle-label">Scannés</div>
-            </div>
+            <div class="toggle-value" id="scanned-count">0/0</div>
+            <div class="toggle-label">Scannés</div>
+        </div>
+        <div class="source-toggle" id="toggle-for-you" onclick="toggleForYou()" style="display:none;">
+            <div class="toggle-value" id="for-you-count" style="color:#FF6B35;">🎯</div>
+            <div class="toggle-label">Pour moi</div>
         </div>
     </div>
 
@@ -1293,6 +1282,7 @@
         var showCinema = false;
         var showSalons = false;
         var showScanned = true;  // 📷 Par défaut, afficher seulement les scans
+        var forYouFilter = false;  // Filtre "Pour moi" (events avec relevanceScore > 0)
         var salonsEventsData = [];
         var scannedEventsData = [];  // 📷 Stockage des événements scannés (avec coordonnées)
         var myScansTotal = 0;        // 📷 Total des scans de l'utilisateur (avec ou sans coordonnées)
@@ -1830,6 +1820,19 @@
                 updateStatus('🔍 "' + searchQuery + '" — ' + eventsToShow.length + ' résultat' + (eventsToShow.length > 1 ? 's' : ''), eventsToShow.length > 0 ? 'success' : 'waiting');
             }
 
+            // 🎯 Filtre "Pour moi"
+            var forYouCount = eventsToShow.filter(function(e) { return (e.relevanceScore || 0) > 0; }).length;
+            var forYouBtn = document.getElementById('for-you-count');
+            if (forYouBtn) forYouBtn.textContent = forYouCount > 0 ? forYouCount : '🎯';
+            if (forYouFilter) {
+                var filtered = eventsToShow.filter(function(e) { return (e.relevanceScore || 0) > 0; });
+                if (filtered.length === 0) {
+                    updateStatus('🎯 Aucun événement correspondant à ton profil ici', 'waiting');
+                } else {
+                    eventsToShow = filtered;
+                }
+            }
+
             displayEventsOnMap(eventsToShow, lat, lon, currentRadiusKm);
 
             // Synchroniser la vue liste si active
@@ -1961,6 +1964,17 @@
                 // Données déjà chargées: comportement toggle standard
                 setExclusiveMode('scanned');
             }
+        }
+
+        function toggleForYou() {
+            forYouFilter = !forYouFilter;
+            var btn = document.getElementById('toggle-for-you');
+            if (btn) {
+                btn.classList.toggle('active', forYouFilter);
+                btn.classList.toggle('inactive', false);
+            }
+            if (currentPosition) refreshMapDisplay();
+            else if (listViewActive) renderListView();
         }
 
         // 📷 FILTRE MES SCANS (désactivé en mode lecture seule)
@@ -2247,9 +2261,54 @@
         }
 
         function updateUserLabel() {
+            var pseudo = _currentUser ? _currentUser.pseudo : '';
+            var displayName = pseudo ? pseudo.split('#')[0] : '';
             var label = document.getElementById('userLabel');
-            label.textContent = _currentUser ? _currentUser.pseudo : '';
+            if (label) label.textContent = displayName;
+            var avatar = document.getElementById('navAvatar');
+            if (avatar) avatar.textContent = displayName ? displayName.charAt(0).toUpperCase() : '?';
+            var dropdownPseudo = document.getElementById('navDropdownPseudo');
+            if (dropdownPseudo) dropdownPseudo.textContent = pseudo || '';
         }
+
+        function toggleUserDropdown() {
+            var dropdown = document.getElementById('navDropdown');
+            if (dropdown) dropdown.classList.toggle('open');
+        }
+
+        // Close dropdown on outside click
+        document.addEventListener('click', function(e) {
+            var userEl = document.querySelector('.nav-user');
+            if (userEl && !userEl.contains(e.target)) {
+                var dropdown = document.getElementById('navDropdown');
+                if (dropdown) dropdown.classList.remove('open');
+            }
+        });
+
+        // Thème clair/sombre
+        function toggleTheme() {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            var newTheme = isDark ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', isDark ? '' : 'dark');
+            var btn = document.getElementById('btnTheme');
+            if (btn) btn.textContent = isDark ? '☀️' : '🌙';
+            try { localStorage.setItem('gedeon_theme', newTheme); } catch(e) {}
+        }
+
+        // Initialiser le thème depuis localStorage
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('gedeon_theme');
+                if (savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                    // Update button text after DOM ready
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var btn = document.getElementById('btnTheme');
+                        if (btn) btn.textContent = '🌙';
+                    });
+                }
+            } catch(e) {}
+        })();
 
         // Déconnexion
         function doLogout() {
@@ -3145,6 +3204,13 @@
                 document.getElementById('radiusRange').value = _sliderVal;
                 currentRadiusKm = _prefKm;
                 document.getElementById('radiusValue').textContent = _prefKm;
+            }
+
+            // Afficher le toggle "Pour moi" si l'utilisateur a des intérêts
+            var interests = ((_currentUser.preferences || {}).interests || []);
+            if (interests.length > 0) {
+                var forYouToggle = document.getElementById('toggle-for-you');
+                if (forYouToggle) forYouToggle.style.display = '';
             }
 
             updateUserLabel();
