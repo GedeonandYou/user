@@ -48,10 +48,18 @@ export function StepDone({ frame, nav, firstName, profile, setStep }) {
           <PrimaryButton onClick={() => (window.location.href = '/')} isNarrow={isNarrow}>
             Explorer GEDEON →
           </PrimaryButton>
-          <button onClick={() => setStep(5)} type="button" style={{
+          <button onClick={() => setStep(17)} type="button" style={{
             marginTop: 10, background: 'none', border: '1px solid var(--profile-card-border)',
             color: 'var(--text-dim)', fontSize: 13, cursor: 'pointer',
             padding: '8px 16px', borderRadius: 10, width: '100%',
+            fontFamily: "'DM Sans', sans-serif",
+          }}>
+            👤 Mon profil
+          </button>
+          <button onClick={() => setStep(5)} type="button" style={{
+            marginTop: 8, background: 'none', border: 'none',
+            color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer',
+            padding: '6px 16px', width: '100%',
             fontFamily: "'DM Sans', sans-serif",
           }}>
             ✏️ Modifier mes préférences

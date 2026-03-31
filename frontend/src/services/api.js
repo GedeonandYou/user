@@ -51,4 +51,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ preferences }),
     }),
+
+  updateProfile: (profileData) =>
+    apiFetch('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    }),
 }

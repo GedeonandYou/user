@@ -19,8 +19,9 @@ import { StepDiscovery }     from './steps/StepDiscovery'
 import { StepAmbiance }      from './steps/StepAmbiance'
 import { StepNotifications } from './steps/StepNotifications'
 import { StepDone }          from './steps/StepDone'
+import { StepEditProfile }   from './steps/StepEditProfile'
 
-const TOTAL_STEPS = 17
+const TOTAL_STEPS = 18
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((email || '').trim().toLowerCase())
@@ -57,6 +58,7 @@ export function GedeonOnboarding() {
   const [forgotInfo, setForgotInfo] = useState('')
 
   // Profile
+  const [sessionPseudo, setSessionPseudo] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [profile, setProfile] = useState({
@@ -93,9 +95,13 @@ export function GedeonOnboarding() {
             ambiance:    prefs.ambiance     ?? null,
           })
           setNotifChoice(prefs.notifications ?? null)
+          setFirstName(prefs.firstName || '')
+          setLastName(prefs.lastName || '')
+          setSessionPseudo(chk.username || '')
           setStep(16) // StepDone en fond
           setShowUpdateModal(true) // popup par-dessus
         } else {
+          setSessionPseudo(chk.username || '')
           setStep(3) // StepIdentity (auth déjà faite)
         }
       } catch (_) { /* ignore */ }
@@ -197,17 +203,36 @@ export function GedeonOnboarding() {
 
   async function finalizeOnboarding() {
     setSaving(true)
-    const preferences = { ...profile, notifications: notifChoice }
+    const preferences = {
+      ...profile,
+      notifications: notifChoice,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+    }
     try {
-      localStorage.setItem('gedeon_onboarding', JSON.stringify({
-        firstName: firstName.trim(), lastName: lastName.trim(),
-        preferences, savedAt: new Date().toISOString(),
-      }))
       localStorage.setItem('gedeon_onboarded', 'true')
-      try { await api.savePreferences(preferences) } catch (_) { /* ignore if endpoint missing */ }
+      try { await api.savePreferences(preferences) } catch { /* ignore if endpoint missing */ }
       goNext()
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleSaveProfile(newFirstName, newLastName, newPseudo) {
+    const preferences = {
+      ...profile,
+      notifications: notifChoice,
+      firstName: newFirstName,
+      lastName: newLastName,
+    }
+    await api.savePreferences(preferences)
+    setFirstName(newFirstName)
+    setLastName(newLastName)
+
+    const currentBase = sessionPseudo.split('_')[0] || ''
+    if (newPseudo.toLowerCase() !== currentBase.toLowerCase()) {
+      const result = await api.updateProfile({ pseudo: newPseudo })
+      setSessionPseudo(result.username || sessionPseudo)
     }
   }
 
@@ -268,6 +293,13 @@ export function GedeonOnboarding() {
       saving={saving} finalizeOnboarding={finalizeOnboarding} />,
     <StepDone key={16} frame={frame} nav={nav}
       firstName={firstName} profile={profile} setStep={setStep} />,
+    <StepEditProfile key={17} frame={frame} nav={nav}
+      firstName={firstName} setFirstName={setFirstName}
+      lastName={lastName} setLastName={setLastName}
+      sessionPseudo={sessionPseudo}
+      saving={saving} setSaving={setSaving}
+      onSave={handleSaveProfile}
+      setStep={setStep} />,
   ]
 
   return (

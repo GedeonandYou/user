@@ -806,6 +806,53 @@ def save_preferences():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@app.route('/api/auth/profile', methods=['PUT'])
+@require_auth
+def update_profile():
+    """Met à jour le pseudo de l'utilisateur connecté."""
+    try:
+        user_id = session.get('user_id')
+        data = request.get_json()
+        new_pseudo = (data.get('pseudo') or '').strip()
+
+        if not new_pseudo:
+            return jsonify({"status": "error", "message": "Pseudo requis"}), 400
+
+        valid, error = validate_pseudo(new_pseudo)
+        if not valid:
+            return jsonify({"status": "error", "message": error}), 400
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT pseudo, pseudo_number FROM users WHERE id = %s", (user_id,))
+        current = cur.fetchone()
+
+        if current['pseudo'].lower() == new_pseudo.lower():
+            display_name = current['pseudo'] + '_' + str(current['pseudo_number'])
+        else:
+            cur.execute(
+                "SELECT COALESCE(MAX(pseudo_number), 0) + 1 AS next_number FROM users WHERE LOWER(pseudo) = LOWER(%s)",
+                (new_pseudo,)
+            )
+            pseudo_number = cur.fetchone()['next_number']
+            cur.execute(
+                "UPDATE users SET pseudo = %s, pseudo_number = %s WHERE id = %s",
+                (new_pseudo, pseudo_number, user_id)
+            )
+            conn.commit()
+            display_name = new_pseudo + '_' + str(pseudo_number)
+            session['user_pseudo'] = display_name
+            print(f"✏️ Pseudo mis à jour: user_id={user_id}, pseudo={display_name}")
+
+        cur.close()
+        conn.close()
+        return jsonify({"status": "success", "message": "Profil mis à jour", "username": display_name}), 200
+    except Exception as e:
+        print(f"❌ Erreur update_profile: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @app.route('/api/auth/resend-confirmation', methods=['POST'])
 def resend_confirmation():
     """Renvoie l'email de confirmation"""
