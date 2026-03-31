@@ -25,10 +25,10 @@ export function StepDone({ frame, nav, firstName, profile, setStep }) {
             Tes préférences sont enregistrées. Tu peux les modifier à tout moment.
           </p>
           <div style={{
-            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--profile-card-bg)', border: '1px solid var(--profile-card-border)',
             borderRadius: 16, padding: 16, marginBottom: 24, textAlign: 'left',
           }}>
-            <p style={{ color: '#777', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>
+            <p style={{ color: 'var(--profile-label)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px' }}>
               Ton profil
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

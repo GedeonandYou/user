@@ -15,7 +15,7 @@ export function StepWelcome({ frame, nav }) {
             fontSize: 36, boxShadow: '0 8px 32px rgba(255,107,53,0.3)',
           }}>G</div>
           <h1 style={{
-            color: '#fff', fontSize: isNarrow ? 28 : 34, fontWeight: 800,
+            color: 'var(--text)', fontSize: isNarrow ? 28 : 34, fontWeight: 800,
             margin: '0 0 8px', fontFamily: "'DM Sans', -apple-system, sans-serif",
             letterSpacing: -0.4,
           }}>GEDEON</h1>
@@ -23,13 +23,13 @@ export function StepWelcome({ frame, nav }) {
             color: '#FF6B35', fontSize: 13, fontWeight: 600, letterSpacing: 2,
             margin: '0 0 24px', textTransform: 'uppercase',
           }}>Global Event Directory</p>
-          <p style={{ color: '#888', fontSize: 14, lineHeight: 1.6, margin: '0 0 40px', whiteSpace: 'pre-line' }}>
+          <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6, margin: '0 0 40px', whiteSpace: 'pre-line' }}>
             Tous les événements du monde.{'\n'}Du concert au village jusqu'aux JO.
           </p>
           <PrimaryButton onClick={nav.goNext} isNarrow={isNarrow}>
             Commencer →
           </PrimaryButton>
-          <p style={{ color: '#555', fontSize: 11, marginTop: 16 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 16 }}>
             Inscription / connexion en 1 minute
           </p>
         </div>

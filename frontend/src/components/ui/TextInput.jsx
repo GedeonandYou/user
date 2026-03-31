@@ -4,8 +4,8 @@ export function TextInput({ isNarrow, style, ...props }) {
       {...props}
       style={{
         width: '100%', padding: isNarrow ? '14px 16px' : '15px 16px',
-        background: 'rgba(255,255,255,0.05)', border: '1.5px solid rgba(255,255,255,0.1)',
-        borderRadius: 12, color: '#fff', fontSize: 15, outline: 'none',
+        background: 'var(--input-bg)', border: '1.5px solid var(--input-border)',
+        borderRadius: 12, color: 'var(--text)', fontSize: 15, outline: 'none',
         boxSizing: 'border-box', fontFamily: "'DM Sans', sans-serif",
         ...(style || {}),
       }}

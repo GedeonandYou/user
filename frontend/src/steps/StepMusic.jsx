@@ -28,7 +28,7 @@ export function StepMusic({ frame, nav, profile, toggleArrayItem }) {
           </PrimaryButton>
           <button onClick={nav.goNext} type="button" style={{
             display: 'block', width: '100%', marginTop: 8,
-            background: 'none', border: 'none', color: '#555', fontSize: 12, cursor: 'pointer', padding: 8,
+            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', padding: 8,
           }}>
             Pas de préférence
           </button>

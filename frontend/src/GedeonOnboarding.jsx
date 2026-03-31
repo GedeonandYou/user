@@ -31,6 +31,13 @@ export function GedeonOnboarding() {
   const isNarrow = vp.w < 560
   const isTablet = vp.w >= 560 && vp.w < 980
 
+  // Thème clair/sombre
+  const [theme, setTheme] = useState(() => localStorage.getItem('gedeon_theme') || 'dark')
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('gedeon_theme', theme)
+  }, [theme])
+
   // Navigation
   const [step, setStep] = useState(0)
   const [animating, setAnimating] = useState(false)
@@ -60,6 +67,9 @@ export function GedeonOnboarding() {
   const [notifChoice, setNotifChoice] = useState(null)
   const [saving, setSaving] = useState(false)
 
+  // Popup de choix au re-login
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+
   // Auto-skip: si déjà connecté, charger les préférences existantes
   useEffect(() => {
     ;(async () => {
@@ -68,7 +78,7 @@ export function GedeonOnboarding() {
         if (!chk?.logged_in) return
         const prefs = chk.preferences || {}
         if (prefs.interests && prefs.interests.length > 0) {
-          // Préférences existantes → pré-remplir et aller directement à la page finale
+          // Préférences existantes → pré-remplir et afficher la popup de choix
           setProfile({
             interests:   prefs.interests    || [],
             sportType:   prefs.sportType    ?? null,
@@ -83,7 +93,8 @@ export function GedeonOnboarding() {
             ambiance:    prefs.ambiance     ?? null,
           })
           setNotifChoice(prefs.notifications ?? null)
-          setStep(16) // StepDone
+          setStep(16) // StepDone en fond
+          setShowUpdateModal(true) // popup par-dessus
         } else {
           setStep(3) // StepIdentity (auth déjà faite)
         }
@@ -259,5 +270,80 @@ export function GedeonOnboarding() {
       firstName={firstName} profile={profile} setStep={setStep} />,
   ]
 
-  return steps[step] ?? steps[0]
+  return (
+    <>
+      <button
+        onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+        type="button"
+        title={theme === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'}
+        style={{
+          position: 'fixed', top: 14, right: 14, zIndex: 9999,
+          width: 36, height: 36, borderRadius: 18,
+          background: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+          border: theme === 'dark' ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(0,0,0,0.15)',
+          cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backdropFilter: 'blur(8px)', transition: 'all 0.2s ease',
+        }}
+      >
+        {theme === 'dark' ? '☀️' : '🌙'}
+      </button>
+      {steps[step] ?? steps[0]}
+      {showUpdateModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.72)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 20px',
+        }}>
+          <div style={{
+            background: '#1a1a1a', borderRadius: 20,
+            border: '1px solid rgba(255,255,255,0.08)',
+            padding: '32px 24px', maxWidth: 360, width: '100%',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 40, marginBottom: 16 }}>👋</div>
+            <h2 style={{
+              color: '#fff', fontSize: 20, fontWeight: 800,
+              margin: '0 0 8px', fontFamily: "'DM Sans', sans-serif",
+            }}>
+              Content de te revoir !
+            </h2>
+            <p style={{
+              color: '#777', fontSize: 14, lineHeight: 1.6, margin: '0 0 28px',
+            }}>
+              Que veux-tu faire ?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button
+                onClick={() => { setShowUpdateModal(false); setStep(5) }}
+                type="button"
+                style={{
+                  padding: '14px 20px', borderRadius: 14,
+                  background: 'linear-gradient(135deg, #FF6B35, #FFB347)',
+                  border: 'none', color: '#fff', fontSize: 15, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                ✏️ Actualiser mes attentes
+              </button>
+              <button
+                onClick={() => { setShowUpdateModal(false); window.location.href = '/' }}
+                type="button"
+                style={{
+                  padding: '14px 20px', borderRadius: 14,
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#ccc', fontSize: 15, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                🗺️ Naviguer sur GEDEON
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }

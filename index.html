@@ -990,18 +990,18 @@
             height: calc(100vh - 98px);
             width: 100%;
             overflow-y: auto;
-            background: #f3f4f6;
+            background: var(--list-bg);
         }
 
         #list-header {
             position: sticky;
             top: 0;
-            background: #fff;
+            background: var(--list-item-bg);
             padding: 10px 16px;
             font-size: 13px;
             font-weight: 600;
-            color: #374151;
-            border-bottom: 1px solid #e5e7eb;
+            color: var(--text);
+            border-bottom: 1px solid var(--list-item-border);
             z-index: 1;
         }
 
@@ -1010,7 +1010,7 @@
         }
 
         .list-item {
-            background: #fff;
+            background: var(--list-item-bg);
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             padding: 12px;
@@ -1020,9 +1020,11 @@
             gap: 10px;
             cursor: pointer;
             transition: box-shadow 0.15s;
+            border: 1px solid var(--list-item-border);
         }
 
         .list-item:active {
+            background: var(--list-item-hover);
             box-shadow: 0 1px 6px rgba(0,0,0,0.2);
         }
 
@@ -1065,7 +1067,7 @@
         .list-empty {
             text-align: center;
             padding: 40px 20px;
-            color: #9ca3af;
+            color: var(--text-sub);
             font-size: 14px;
         }
 

@@ -42,6 +42,7 @@ except ImportError:
 app = Flask(__name__, static_folder='.', static_url_path='')
 app.config['JSON_SORT_KEYS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gedeon-user-secret-key-change-in-prod')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 CORS(app, supports_credentials=True)
 
 # PostgreSQL
@@ -714,6 +715,7 @@ def login():
         conn.close()
 
         # Session
+        session.permanent = True
         display_name = user['pseudo'] + '_' + str(user['pseudo_number'])
         session['user_logged_in'] = True
         session['user_id'] = user['id']
