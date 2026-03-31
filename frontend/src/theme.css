@@ -1,0 +1,83 @@
+/* ── GEDEON THEME VARIABLES ──────────────────────────────────────── */
+
+/* Dark (défaut) */
+:root {
+  --shell-bg: radial-gradient(1200px 600px at 50% 10%, rgba(255,107,53,0.12), transparent 60%),
+              linear-gradient(180deg, #070712, #05050c 65%, #04040a);
+  --frame-outer-bg: #1a1a2e;
+  --frame-inner-bg: #0d0d1a;
+  --frame-wide-bg: rgba(255,255,255,0.03);
+  --frame-wide-shadow: 0 28px 70px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.06);
+  --border-sub: rgba(255,255,255,0.08);
+  --border-progress: rgba(255,255,255,0.05);
+  --text: #ffffff;
+  --text-sub: #777777;
+  --text-muted: #555555;
+  --text-dim: #888888;
+  --input-bg: rgba(255,255,255,0.05);
+  --input-border: rgba(255,255,255,0.10);
+  --card-bg: rgba(255,255,255,0.03);
+  --card-selected-bg: rgba(255,107,53,0.10);
+  --chip-bg: rgba(255,255,255,0.04);
+  --chip-border: rgba(255,255,255,0.08);
+  --chip-text: #aaaaaa;
+  --radio-border: #333333;
+  --progress-track: rgba(255,255,255,0.08);
+  --btn-disabled-bg: rgba(255,255,255,0.06);
+  --btn-disabled-text: #555555;
+  --btn-secondary-bg: rgba(255,255,255,0.04);
+  --btn-secondary-border: rgba(255,255,255,0.08);
+  --btn-secondary-text: #bbbbbb;
+  --error-bg: rgba(255,80,80,0.08);
+  --error-text: #ff8a8a;
+  --info-bg: rgba(255,255,255,0.03);
+  --info-text: #bbbbbb;
+  --confirm-bg: rgba(255,107,53,0.06);
+  --confirm-border: rgba(255,107,53,0.25);
+  --confirm-text: #dddddd;
+  --profile-card-bg: rgba(255,255,255,0.03);
+  --profile-card-border: rgba(255,255,255,0.06);
+  --profile-label: #777777;
+}
+
+/* Light */
+[data-theme="light"] {
+  --shell-bg: radial-gradient(1200px 600px at 50% 10%, rgba(255,107,53,0.08), transparent 60%),
+              linear-gradient(180deg, #F9F7F5, #F2EDE8 65%, #EDE7DF);
+  --frame-outer-bg: #E0DAD4;
+  --frame-inner-bg: #FFFFFF;
+  --frame-wide-bg: rgba(0,0,0,0.03);
+  --frame-wide-shadow: 0 28px 70px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.08);
+  --border: rgba(0,0,0,0.08);
+  --border-sub: rgba(0,0,0,0.10);
+  --border-progress: rgba(0,0,0,0.06);
+  --text: #1A1A1A;
+  --text-sub: #666666;
+  --text-muted: #999999;
+  --text-dim: #888888;
+  --input-bg: rgba(0,0,0,0.04);
+  --input-border: rgba(0,0,0,0.15);
+  --card-bg: rgba(0,0,0,0.02);
+  --card-selected-bg: rgba(255,107,53,0.08);
+  --chip-bg: rgba(0,0,0,0.04);
+  --chip-border: rgba(0,0,0,0.12);
+  --chip-text: #555555;
+  --radio-border: #cccccc;
+  --progress-track: rgba(0,0,0,0.08);
+  --btn-disabled-bg: rgba(0,0,0,0.06);
+  --btn-disabled-text: #999999;
+  --btn-secondary-bg: rgba(0,0,0,0.04);
+  --btn-secondary-border: rgba(0,0,0,0.12);
+  --btn-secondary-text: #555555;
+  --error-bg: rgba(220,38,38,0.06);
+  --error-text: #dc2626;
+  --info-bg: rgba(0,0,0,0.03);
+  --info-text: #444444;
+  --confirm-bg: rgba(255,107,53,0.05);
+  --confirm-border: rgba(255,107,53,0.30);
+  --confirm-text: #333333;
+  --profile-card-bg: rgba(0,0,0,0.02);
+  --profile-card-border: rgba(0,0,0,0.08);
+  --profile-label: #888888;
+}

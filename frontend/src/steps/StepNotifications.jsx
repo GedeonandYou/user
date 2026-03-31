@@ -13,10 +13,10 @@ export function StepNotifications({ frame, nav, notifChoice, setNotifChoice, sav
         <div style={{ textAlign: 'center', padding: '0 12px' }}>
           <div style={{ fontSize: 48, marginBottom: 20 }}>🔔</div>
           <h2 style={{
-            color: '#fff', fontSize: isNarrow ? 22 : 26, fontWeight: 800,
+            color: 'var(--text)', fontSize: isNarrow ? 22 : 26, fontWeight: 800,
             margin: '0 0 12px', fontFamily: "'DM Sans', sans-serif",
           }}>Notifications</h2>
-          <p style={{ color: '#888', fontSize: 14, lineHeight: 1.6, margin: '0 0 32px' }}>
+          <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6, margin: '0 0 32px' }}>
             Pas obligatoire, mais conseillé pour ne pas rater un événement près de chez toi !
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>

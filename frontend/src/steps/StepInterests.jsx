@@ -22,7 +22,7 @@ export function StepInterests({ frame, nav, profile, toggleInterest }) {
               onClick={() => toggleInterest(i.id)} />
           ))}
         </div>
-        <p style={{ color: '#555', fontSize: 11, textAlign: 'center', margin: '4px 0 12px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 11, textAlign: 'center', margin: '4px 0 12px' }}>
           {profile.interests.length}/5 sélectionnés
         </p>
         <div style={{ marginTop: 'auto' }}>

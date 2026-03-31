@@ -2,9 +2,9 @@ export function OptionCard({ label, sub, selected, onClick, emoji, disabled, bad
   return (
     <button onClick={disabled ? undefined : onClick} type="button" style={{
       width: '100%', padding: isNarrow ? '14px 16px' : '16px 18px',
-      background: selected ? 'rgba(255,107,53,0.1)' : 'rgba(255,255,255,0.03)',
-      border: selected ? '1.5px solid #FF6B35' : '1.5px solid rgba(255,255,255,0.06)',
-      borderRadius: 14, color: '#fff',
+      background: selected ? 'var(--card-selected-bg)' : 'var(--card-bg)',
+      border: selected ? '1.5px solid #FF6B35' : '1.5px solid var(--border)',
+      borderRadius: 14, color: 'var(--text)',
       cursor: disabled ? 'not-allowed' : 'pointer',
       display: 'flex', alignItems: 'center', gap: 12,
       transition: 'all 0.2s ease', textAlign: 'left',
@@ -28,14 +28,14 @@ export function OptionCard({ label, sub, selected, onClick, emoji, disabled, bad
           )}
         </div>
         {sub && (
-          <div style={{ fontSize: 11, color: '#666', marginTop: 2, lineHeight: 1.35 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 2, lineHeight: 1.35 }}>
             {sub}
           </div>
         )}
       </div>
       <div style={{
         width: 20, height: 20, borderRadius: 10, flexShrink: 0,
-        border: selected ? '2px solid #FF6B35' : '2px solid #333',
+        border: selected ? '2px solid #FF6B35' : '2px solid var(--radio-border)',
         background: selected ? '#FF6B35' : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.2s ease',

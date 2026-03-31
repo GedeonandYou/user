@@ -32,7 +32,7 @@ export function StepSport({ frame, nav, profile, setProfile, toggleArrayItem }) 
         </div>
         {profile.sportType && profile.sportType !== 'bof' && (
           <>
-            <p style={{ color: '#777', fontSize: 12, margin: '8px 0' }}>Sports préférés (optionnel) :</p>
+            <p style={{ color: 'var(--text-sub)', fontSize: 12, margin: '8px 0' }}>Sports préférés (optionnel) :</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
               {SPORTS_TYPES.map(s => (
                 <Chip key={s} label={s}

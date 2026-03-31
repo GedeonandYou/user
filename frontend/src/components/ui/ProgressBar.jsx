@@ -4,16 +4,16 @@ export function ProgressBar({ step, totalSteps, progressPercent, isNarrow, goBac
     <div style={{
       padding: isNarrow ? '48px 20px 8px' : '22px 24px 10px',
       display: 'flex', alignItems: 'center', gap: 12,
-      borderBottom: isNarrow ? 'none' : '1px solid rgba(255,255,255,0.05)',
+      borderBottom: isNarrow ? 'none' : '1px solid var(--border-progress)',
     }}>
       {step > 0 && (
         <button onClick={goBack} type="button" style={{
-          background: 'none', border: 'none', color: '#888',
+          background: 'none', border: 'none', color: 'var(--text-dim)',
           fontSize: 20, cursor: 'pointer', padding: 6, borderRadius: 10,
         }}>←</button>
       )}
       <div style={{
-        flex: 1, height: 3, background: 'rgba(255,255,255,0.08)',
+        flex: 1, height: 3, background: 'var(--progress-track)',
         borderRadius: 2, overflow: 'hidden',
       }}>
         <div style={{
@@ -22,7 +22,7 @@ export function ProgressBar({ step, totalSteps, progressPercent, isNarrow, goBac
           borderRadius: 2, transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         }} />
       </div>
-      <span style={{ color: '#555', fontSize: 11, fontFamily: 'monospace', minWidth: 38, textAlign: 'right' }}>
+      <span style={{ color: 'var(--text-muted)', fontSize: 11, fontFamily: 'monospace', minWidth: 38, textAlign: 'right' }}>
         {Math.round(progressPercent)}%
       </span>
     </div>

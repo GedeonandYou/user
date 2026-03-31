@@ -38,7 +38,7 @@ export function StepAuthForm({
             <TextInput isNarrow={isNarrow} placeholder="Pseudo (ex: marie_lorio)"
               value={pseudo} onChange={(e) => setPseudo(e.target.value)}
               autoComplete="username" autoCapitalize="none" autoCorrect="off" />
-            <p style={{ color: '#555', fontSize: 11, marginTop: 8 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 8 }}>
               2 caractères min • lettres/chiffres/_/- acceptés
             </p>
           </div>
@@ -53,7 +53,7 @@ export function StepAuthForm({
               autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} />
             <button onClick={() => setShowPwd(s => !s)} type="button" aria-label="Afficher/masquer" style={{
               position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-              background: 'none', border: 'none', color: '#777', cursor: 'pointer', padding: 6, fontSize: 12,
+              background: 'none', border: 'none', color: 'var(--text-sub)', cursor: 'pointer', padding: 6, fontSize: 12,
             }}>
               {showPwd ? '🙈' : '👁️'}
             </button>
@@ -77,14 +77,14 @@ export function StepAuthForm({
         {(authError || authInfo || forgotInfo) && (
           <div style={{
             padding: '12px 14px', borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: authError ? 'rgba(255,80,80,0.08)' : 'rgba(255,255,255,0.03)',
+            border: '1px solid var(--border-sub)',
+            background: authError ? 'var(--error-bg)' : 'var(--info-bg)',
             marginBottom: 14,
           }}>
-            {authError && <div style={{ color: '#ff8a8a', fontSize: 13, lineHeight: 1.5 }}>{authError}</div>}
-            {authInfo && <div style={{ color: '#bbb', fontSize: 13, lineHeight: 1.5 }}>{authInfo}</div>}
+            {authError && <div style={{ color: 'var(--error-text)', fontSize: 13, lineHeight: 1.5 }}>{authError}</div>}
+            {authInfo && <div style={{ color: 'var(--info-text)', fontSize: 13, lineHeight: 1.5 }}>{authInfo}</div>}
             {forgotInfo && (
-              <div style={{ color: '#bbb', fontSize: 13, lineHeight: 1.5, marginTop: authError || authInfo ? 10 : 0 }}>
+              <div style={{ color: 'var(--info-text)', fontSize: 13, lineHeight: 1.5, marginTop: authError || authInfo ? 10 : 0 }}>
                 {forgotInfo}
               </div>
             )}
@@ -94,16 +94,16 @@ export function StepAuthForm({
         {pendingConfirm && (
           <div style={{
             padding: '12px 14px', borderRadius: 12,
-            border: '1px solid rgba(255,107,53,0.25)', background: 'rgba(255,107,53,0.06)', marginBottom: 14,
+            border: '1px solid var(--confirm-border)', background: 'var(--confirm-bg)', marginBottom: 14,
           }}>
-            <div style={{ color: '#ddd', fontSize: 12, lineHeight: 1.6 }}>
+            <div style={{ color: 'var(--confirm-text)', fontSize: 12, lineHeight: 1.6 }}>
               ✅ <b>Confirmation email</b> : ouvre le lien reçu, puis clique sur <b>"J'ai confirmé"</b> ci-dessous.
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
               <button onClick={handleResendConfirmation} disabled={authLoading} type="button" style={{
                 flex: 1, padding: '10px 12px', borderRadius: 12,
-                border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                color: '#bbb', cursor: authLoading ? 'not-allowed' : 'pointer', fontSize: 12,
+                border: '1px solid var(--btn-secondary-border)', background: 'var(--btn-secondary-bg)',
+                color: 'var(--btn-secondary-text)', cursor: authLoading ? 'not-allowed' : 'pointer', fontSize: 12,
               }}>
                 Renvoyer l'email
               </button>
@@ -134,7 +134,7 @@ export function StepAuthForm({
             {forgotLoading ? 'Envoi...' : 'Mot de passe oublié ?'}
           </button>
           <button onClick={() => { setAuthMode(m => m === 'login' ? 'register' : 'login') }} type="button" style={{
-            background: 'none', border: 'none', color: '#555', fontSize: 12,
+            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12,
             cursor: 'pointer', padding: 8, width: '100%',
           }}>
             {authMode === 'login' ? "Je n'ai pas de compte → Créer un compte" : "J'ai déjà un compte → Se connecter"}

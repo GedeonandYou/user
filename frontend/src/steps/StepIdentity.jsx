@@ -22,11 +22,11 @@ export function StepIdentity({ frame, nav, firstName, setFirstName, lastName, se
         </div>
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 8,
-          padding: '12px 14px', background: 'rgba(255,107,53,0.06)',
+          padding: '12px 14px', background: 'var(--confirm-bg)',
           borderRadius: 10, marginBottom: 20,
         }}>
           <span style={{ fontSize: 16 }}>🔒</span>
-          <p style={{ color: '#999', fontSize: 11, lineHeight: 1.5, margin: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 11, lineHeight: 1.5, margin: 0 }}>
             Ton identité n'est jamais partagée publiquement. Elle sert uniquement à la
             billetterie et aux réservations via nos partenaires.
           </p>
