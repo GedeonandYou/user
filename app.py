@@ -267,6 +267,16 @@ def get_default_radius_from_prefs(preferences):
     return DISTANCE_TO_KM.get(dist_pref, RADIUS_KM_DEFAULT)
 
 
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Distance en km entre deux points GPS."""
+    from math import radians, sin, cos, sqrt, atan2
+    R = 6371
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat/2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon/2)**2
+    return R * 2 * atan2(sqrt(a), sqrt(1-a))
+
+
 def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
     """Récupère les événements DATAtourisme depuis PostgreSQL."""
     try:
@@ -276,30 +286,57 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
 
         date_limite = datetime.now().date() + timedelta(days=days_ahead)
 
-        query = """
-            WITH nearby_events AS (
-                SELECT uri, nom, description, date_debut, date_fin,
-                       latitude, longitude, adresse, commune, code_postal, contacts, geom
+        # Essayer avec PostGIS, sinon fallback sans geom
+        try:
+            query = """
+                WITH nearby_events AS (
+                    SELECT uri, nom, description, date_debut, date_fin,
+                           latitude, longitude, adresse, commune, code_postal, contacts, geom
+                    FROM evenements
+                    WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)
+                      AND (
+                          (date_fin IS NOT NULL AND date_fin >= CURRENT_DATE AND date_debut <= %s)
+                          OR
+                          (date_fin IS NULL AND date_debut >= CURRENT_DATE AND date_debut <= %s)
+                      )
+                    LIMIT 500
+                )
+                SELECT uri as uid, nom as title, description,
+                       date_debut as begin, date_fin as end,
+                       latitude, longitude, adresse as address, commune as city,
+                       code_postal as zipcode, contacts,
+                       ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography) / 1000 as "distanceKm"
+                FROM nearby_events
+                ORDER BY "distanceKm", date_debut
+            """
+            cur.execute(query, (center_lon, center_lat, radius_km * 1000, date_limite, date_limite, center_lon, center_lat))
+            rows = cur.fetchall()
+        except Exception:
+            # Fallback sans PostGIS : bounding box large + filtre Haversine Python
+            conn.rollback()
+            deg = radius_km / 111.0
+            query_fallback = """
+                SELECT uri as uid, nom as title, description,
+                       date_debut as begin, date_fin as end,
+                       latitude, longitude, adresse as address, commune as city,
+                       code_postal as zipcode, contacts
                 FROM evenements
-                WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)
+                WHERE latitude BETWEEN %s AND %s
+                  AND longitude BETWEEN %s AND %s
                   AND (
                       (date_fin IS NOT NULL AND date_fin >= CURRENT_DATE AND date_debut <= %s)
                       OR
                       (date_fin IS NULL AND date_debut >= CURRENT_DATE AND date_debut <= %s)
+                      OR date_debut IS NULL
                   )
                 LIMIT 500
-            )
-            SELECT uri as uid, nom as title, description,
-                   date_debut as begin, date_fin as end,
-                   latitude, longitude, adresse as address, commune as city,
-                   code_postal as zipcode, contacts,
-                   ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography) / 1000 as "distanceKm"
-            FROM nearby_events
-            ORDER BY "distanceKm", date_debut
-        """
-
-        cur.execute(query, (center_lon, center_lat, radius_km * 1000, date_limite, date_limite, center_lon, center_lat))
-        rows = cur.fetchall()
+            """
+            cur.execute(query_fallback, (
+                center_lat - deg, center_lat + deg,
+                center_lon - deg, center_lon + deg,
+                date_limite, date_limite
+            ))
+            rows = cur.fetchall()
 
         events = []
         for row in rows:
@@ -308,8 +345,17 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
                 event['begin'] = event['begin'].isoformat()
             if event.get('end'):
                 event['end'] = event['end'].isoformat()
-            if event.get('distanceKm'):
+            # Calcul distance si pas fourni par PostGIS
+            if 'distanceKm' not in event or event.get('distanceKm') is None:
+                lat = event.get('latitude') or event.get('lat')
+                lon = event.get('longitude') or event.get('lon')
+                if lat and lon:
+                    event['distanceKm'] = round(_haversine_km(center_lat, center_lon, float(lat), float(lon)), 1)
+            else:
                 event['distanceKm'] = round(event['distanceKm'], 1)
+            # Filtrer par rayon réel si fallback
+            if event.get('distanceKm') is not None and event['distanceKm'] > radius_km:
+                continue
             event['locationName'] = event.get('city', '')
             event['source'] = 'DATAtourisme'
             event['agendaTitle'] = 'DATAtourisme'

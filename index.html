@@ -294,7 +294,7 @@
             border-radius: 10px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.15);
             min-width: 160px;
-            z-index: 500;
+            z-index: 1100;
             overflow: hidden;
         }
 
@@ -1112,76 +1112,135 @@
             z-index: 1;
         }
 
+        /* ── EVENT CARDS ── */
         #list-content {
-            padding: 8px;
-        }
-
-        .list-item {
-            background: var(--list-item-bg);
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             padding: 12px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 14px;
+        }
+
+        .event-card {
+            background: var(--list-item-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             cursor: pointer;
-            transition: box-shadow 0.15s;
+            transition: transform 0.15s, box-shadow 0.15s;
             border: 1px solid var(--list-item-border);
+            position: relative;
         }
 
-        .list-item:active {
-            background: var(--list-item-hover);
-            box-shadow: 0 1px 6px rgba(0,0,0,0.2);
+        .event-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
         }
 
-        .list-item-icon {
-            font-size: 22px;
-            flex-shrink: 0;
+        .event-card-banner {
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .event-card-banner::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.25) 100%);
+        }
+
+        .event-card-emoji {
+            font-size: 48px;
             line-height: 1;
-            margin-top: 2px;
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
         }
 
-        .list-item-body {
-            flex: 1;
-            min-width: 0;
+        .event-card-badge-recommended {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.92);
+            color: #92400e;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            z-index: 2;
         }
 
-        .list-item-title {
+        .event-card-source-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.45);
+            color: #fff;
+            font-size: 10px;
             font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            z-index: 2;
+        }
+
+        .event-card-body {
+            padding: 12px 14px 14px;
+        }
+
+        .event-card-title {
+            font-weight: 700;
             font-size: 14px;
             color: var(--text);
+            line-height: 1.35;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .event-card-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .event-card-meta-row {
+            font-size: 12px;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            gap: 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .list-item-date {
-            font-size: 12px;
+        .event-card-distance {
+            display: inline-block;
+            background: var(--list-item-hover, rgba(0,0,0,0.05));
             color: var(--text-sub);
-            margin-top: 2px;
-        }
-
-        .list-item-location {
-            font-size: 12px;
-            color: var(--text-sub);
-            margin-top: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 8px;
+            margin-top: 6px;
         }
 
         .list-empty {
             text-align: center;
-            padding: 40px 20px;
+            padding: 60px 20px;
             color: var(--text-sub);
             font-size: 14px;
+            grid-column: 1 / -1;
         }
 
-        @media (max-width: 768px) {
-            .list-item {
-                padding: 10px;
-                min-height: 44px;
+        @media (max-width: 500px) {
+            #list-content {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -1388,10 +1447,10 @@
         var currentRadiusCircle = null;
         var currentCenterMarker = null;
         var initialMapBounds = null;
-        var showEvents = false;
-        var showCinema = false;
-        var showSalons = false;
-        var showScanned = true;  // 📷 Par défaut, afficher seulement les scans
+        var showEvents = true;
+        var showCinema = true;
+        var showSalons = true;
+        var showScanned = true;
         var forYouFilter = false;  // Filtre "Pour moi" (events avec relevanceScore > 0)
         var salonsEventsData = [];
         var scannedEventsData = [];  // 📷 Stockage des événements scannés (avec coordonnées)
@@ -2774,7 +2833,23 @@
             if (ev.source === 'Scanner') return '📷';
             if (ev.source === 'Allocine') return '🎬';
             if (ev.source === 'EventsEye') return '🏛️';
-            return '📍';
+            // Détection par mots-clés dans le titre / description
+            var txt = ((ev.title || '') + ' ' + (ev.description || '')).toLowerCase();
+            if (/concert|musique|music|festival|jazz|rock|électro|rap|chanson/.test(txt)) return '🎵';
+            if (/théâtre|théatre|danse|dance|spectacle|ballet|opéra|opera|comédie/.test(txt)) return '🎭';
+            if (/sport|foot|rugby|tennis|natation|vélo|velo|running|marathon|trail|basket|handball/.test(txt)) return '⚽';
+            if (/expo|exposition|musée|musee|galerie|art|peinture|sculpture/.test(txt)) return '🎨';
+            if (/salon|foire|marché|marche|brocante/.test(txt)) return '🏪';
+            if (/gastronomie|cuisine|vin|wine|dégust|repas|restaurant|food/.test(txt)) return '🍷';
+            if (/nature|rando|balade|forêt|foret|parc|jardin|environnement/.test(txt)) return '🌿';
+            if (/famille|enfant|kids|jeunesse|jeux|jeu/.test(txt)) return '👨‍👩‍👧‍👦';
+            if (/conférence|conference|séminaire|seminaire|colloque|formation/.test(txt)) return '📚';
+            if (/bien.être|yoga|méditation|meditation|relaxation|spa/.test(txt)) return '🧘';
+            if (/tech|numérique|digital|innovation|startup|hackathon/.test(txt)) return '🚀';
+            if (/mode|fashion|design|défilé|defile/.test(txt)) return '👗';
+            if (/nuit|nuit|soirée|soiree|club|DJ|bar/.test(txt)) return '🌙';
+            if (/religieux|religion|église|eglise|prière|priere|spirituel/.test(txt)) return '🕊️';
+            return '📅';
         }
 
         function getEventColor(ev) {
@@ -2782,6 +2857,26 @@
             if (ev.source === 'Allocine') return '#dc2626';
             if (ev.source === 'EventsEye') return '#22c55e';
             return '#3b82f6';
+        }
+
+        function getEventGradient(ev) {
+            if (ev.source === 'Scanner') return 'linear-gradient(135deg, #f97316, #ea580c)';
+            if (ev.source === 'Allocine') return 'linear-gradient(135deg, #dc2626, #7f1d1d)';
+            if (ev.source === 'EventsEye') return 'linear-gradient(135deg, #059669, #065f46)';
+            var txt = ((ev.title || '') + ' ' + (ev.description || '')).toLowerCase();
+            if (/concert|musique|music|festival|jazz|rock|électro|rap|chanson/.test(txt)) return 'linear-gradient(135deg, #7c3aed, #4c1d95)';
+            if (/théâtre|théatre|danse|dance|spectacle|ballet|opéra|opera|comédie/.test(txt)) return 'linear-gradient(135deg, #db2777, #831843)';
+            if (/sport|foot|rugby|tennis|natation|vélo|velo|running|marathon|trail|basket|handball/.test(txt)) return 'linear-gradient(135deg, #f97316, #c2410c)';
+            if (/expo|exposition|musée|musee|galerie|art|peinture|sculpture/.test(txt)) return 'linear-gradient(135deg, #ec4899, #9d174d)';
+            if (/salon|foire|marché|marche|brocante/.test(txt)) return 'linear-gradient(135deg, #0ea5e9, #0c4a6e)';
+            if (/gastronomie|cuisine|vin|wine|dégust|repas|restaurant|food/.test(txt)) return 'linear-gradient(135deg, #f59e0b, #92400e)';
+            if (/nature|rando|balade|forêt|foret|parc|jardin|environnement/.test(txt)) return 'linear-gradient(135deg, #10b981, #064e3b)';
+            if (/famille|enfant|kids|jeunesse|jeux|jeu/.test(txt)) return 'linear-gradient(135deg, #f472b6, #9d174d)';
+            if (/conférence|conference|séminaire|seminaire|colloque|formation/.test(txt)) return 'linear-gradient(135deg, #6366f1, #312e81)';
+            if (/bien.être|yoga|méditation|meditation|relaxation|spa/.test(txt)) return 'linear-gradient(135deg, #14b8a6, #134e4a)';
+            if (/tech|numérique|digital|innovation|startup|hackathon/.test(txt)) return 'linear-gradient(135deg, #6366f1, #1e1b4b)';
+            if (/nuit|soirée|soiree|club|DJ|bar/.test(txt)) return 'linear-gradient(135deg, #1e1b4b, #4c1d95)';
+            return 'linear-gradient(135deg, #3b82f6, #1e3a8a)';
         }
 
         function parseEventDate(str) {
@@ -2808,11 +2903,10 @@
         function renderListView() {
             var events = getListEvents();
 
-            // Trier par date croissante (plus proche en premier)
+            // Trier : recommandés en premier, puis par date
             events.sort(function(a, b) {
-                var da = parseEventDate(a.begin);
-                var db = parseEventDate(b.begin);
-                return da - db;
+                if ((b.relevanceScore || 0) !== (a.relevanceScore || 0)) return (b.relevanceScore || 0) - (a.relevanceScore || 0);
+                return parseEventDate(a.begin) - parseEventDate(b.begin);
             });
 
             var countEl = document.getElementById('list-count');
@@ -2830,30 +2924,55 @@
                 var ev = events[i];
                 var title = ev.title || 'Sans titre';
                 var icon = getEventIcon(ev);
-                var color = getEventColor(ev);
+                var gradient = getEventGradient(ev);
+
+                // Date
                 var date = '';
                 if (ev.begin) {
                     date = formatDateOnly(ev.begin);
-                    if (ev.end && ev.end !== ev.begin) date += ' - ' + formatDateOnly(ev.end);
+                    if (ev.end && ev.end !== ev.begin) date += ' → ' + formatDateOnly(ev.end);
                 }
-                // Horaires cinéma : extraire depuis description
+
+                // Horaires cinéma
                 var showtimes = '';
                 if (ev.source === 'Allocine' && ev.description) {
                     var stMatch = ev.description.match(/(Auj:[^•]+|Dem:[^•]+)/);
                     if (stMatch) showtimes = stMatch[1].trim();
                 }
+
+                // Lieu
                 var location = '';
                 if (ev.locationName) location += ev.locationName;
-                if (ev.city) location += (location ? ', ' : '') + ev.city;
+                if (ev.city && ev.city !== ev.locationName) location += (location ? ', ' : '') + ev.city;
 
-                html += '<div class="list-item" onclick="onListItemClick(' + i + ')" data-lat="' + (ev.latitude || '') + '" data-lng="' + (ev.longitude || '') + '" style="border-left:4px solid ' + color + ';">';
-                html += '<span class="list-item-icon">' + icon + '</span>';
-                html += '<div class="list-item-body">';
-                if (ev.relevanceScore > 0) html += '<span style="display:inline-block;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-bottom:3px;">⭐ Recommandé</span>';
-                html += '<div class="list-item-title" style="color:' + color + ';">' + title + '</div>';
-                if (date) html += '<div class="list-item-date">📅 ' + date + (showtimes ? ' — ' + showtimes : '') + '</div>';
-                if (location) html += '<div class="list-item-location">📍 ' + location + '</div>';
+                // Distance
+                var dist = '';
+                if (ev.distanceKm != null) dist = ev.distanceKm + ' km';
+
+                // Source label
+                var sourceLabel = ev.source === 'Allocine' ? 'Cinéma' :
+                                  ev.source === 'EventsEye' ? 'Salon' :
+                                  ev.source === 'Scanner' ? 'Scanné' : 'Événement';
+
+                html += '<div class="event-card" onclick="onListItemClick(' + i + ')" data-lat="' + (ev.latitude || '') + '" data-lng="' + (ev.longitude || '') + '">';
+
+                // Bannière avec gradient
+                html += '<div class="event-card-banner" style="background:' + gradient + ';">';
+                html += '<span class="event-card-emoji">' + icon + '</span>';
+                if (ev.relevanceScore > 0) html += '<span class="event-card-badge-recommended">⭐ Recommandé</span>';
+                html += '<span class="event-card-source-badge">' + sourceLabel + '</span>';
                 html += '</div>';
+
+                // Corps
+                html += '<div class="event-card-body">';
+                html += '<div class="event-card-title">' + title + '</div>';
+                html += '<div class="event-card-meta">';
+                if (date) html += '<div class="event-card-meta-row">📅 ' + date + (showtimes ? ' · ' + showtimes : '') + '</div>';
+                if (location) html += '<div class="event-card-meta-row">📍 ' + location + '</div>';
+                html += '</div>';
+                if (dist) html += '<span class="event-card-distance">📏 ' + dist + '</span>';
+                html += '</div>';
+
                 html += '</div>';
             }
             contentEl.innerHTML = html;
@@ -3466,11 +3585,11 @@
             // Charger les événements scannés depuis le serveur
             await loadScannedEventsFromServer();
 
-            // Par défaut : mode scans uniquement
-            exclusiveMode = 'scanned';
-            showEvents = false;
-            showCinema = false;
-            showSalons = false;
+            // Par défaut : tout afficher
+            exclusiveMode = null;
+            showEvents = true;
+            showCinema = true;
+            showSalons = true;
             showScanned = true;
             updateToggleVisuals();
 
@@ -3492,6 +3611,7 @@
                         updateRadiusSliderState();
                         displayScannedEventsGlobal();
                         updateScannedCount();
+                        fetchNearbyEvents(currentPosition);
                         getCityFromCoordinates(lat, lon).then(function(locationInfo) {
                             if (locationInfo && locationInfo.city) {
                                 currentContextLabel = 'à ' + locationInfo.city;
