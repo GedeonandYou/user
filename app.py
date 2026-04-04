@@ -291,7 +291,7 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
             query = """
                 WITH nearby_events AS (
                     SELECT uri, nom, description, date_debut, date_fin,
-                           latitude, longitude, adresse, commune, code_postal, contacts, geom
+                           latitude, longitude, adresse, commune, code_postal, contacts, image, geom
                     FROM evenements
                     WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)
                       AND (
@@ -304,7 +304,7 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
                 SELECT uri as uid, nom as title, description,
                        date_debut as begin, date_fin as end,
                        latitude, longitude, adresse as address, commune as city,
-                       code_postal as zipcode, contacts,
+                       code_postal as zipcode, contacts, image,
                        ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography) / 1000 as "distanceKm"
                 FROM nearby_events
                 ORDER BY "distanceKm", date_debut
@@ -319,7 +319,7 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
                 SELECT uri as uid, nom as title, description,
                        date_debut as begin, date_fin as end,
                        latitude, longitude, adresse as address, commune as city,
-                       code_postal as zipcode, contacts
+                       code_postal as zipcode, contacts, image
                 FROM evenements
                 WHERE latitude BETWEEN %s AND %s
                   AND longitude BETWEEN %s AND %s
@@ -563,6 +563,18 @@ def init_user_tables():
             END $$;
         """)
 
+        # Migration colonne image sur la table evenements (si elle existe)
+        cur.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='evenements') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='evenements' AND column_name='image') THEN
+                        ALTER TABLE evenements ADD COLUMN image TEXT DEFAULT NULL;
+                    END IF;
+                END IF;
+            END $$;
+        """)
+
         cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_users_pseudo ON users(pseudo)")
         cur.execute("CREATE INDEX IF NOT EXISTS idx_users_confirmation_token ON users(confirmation_token)")
@@ -599,6 +611,19 @@ def onboarding():
 def onboarding_assets(filename):
     """Sert les assets statiques du build Vite"""
     return send_from_directory('onboarding_dist', filename)
+
+
+@app.route('/new')
+@app.route('/new/')
+def explorer_new():
+    """Nouvelle interface Explorer (build Vite gedeon-explorer-ui-light-dark)"""
+    return send_from_directory('explorer_dist', 'index.html')
+
+
+@app.route('/explorer/<path:filename>')
+def explorer_assets(filename):
+    """Assets statiques du build Explorer"""
+    return send_from_directory('explorer_dist', filename)
 
 
 @app.route('/health')
