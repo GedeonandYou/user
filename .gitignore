@@ -28,7 +28,9 @@ uploads/
 
 # Build Vite
 onboarding_dist/
+explorer_dist/
 frontend/node_modules/
+gedeon-explorer-ui-light-dark/node_modules/
 
 # Claude Code
 CLAUDE.md
