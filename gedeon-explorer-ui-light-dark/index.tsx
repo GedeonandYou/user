@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import type { EventData, Category } from "./types";
 import { checkAuth, fetchEvents, getAvailableCategories } from "./api";
+import LeafletMap from "./LeafletMap";
+import ProfilePanel from "./ProfilePanel";
 
 // --- Image avec fallback ---
 const EventImage = ({ src, alt, className }: { src: string | null; alt: string; className?: string }) => {
@@ -121,37 +123,6 @@ const EventDetails = ({ event, onClose, darkMode }: { event: EventData; onClose:
   </motion.div>
 );
 
-// --- Pin carte ---
-const MapPin2 = ({ event, idx, onClick, darkMode }: { event: EventData; idx: number; onClick: () => void; darkMode: boolean }) => {
-  const positions = [
-    { left: '18%', top: '22%' }, { left: '35%', top: '40%' }, { left: '55%', top: '18%' },
-    { left: '70%', top: '55%' }, { left: '25%', top: '62%' }, { left: '80%', top: '30%' },
-    { left: '45%', top: '72%' }, { left: '60%', top: '45%' }, { left: '15%', top: '48%' },
-    { left: '88%', top: '65%' }, { left: '40%', top: '28%' }, { left: '72%', top: '20%' },
-    { left: '50%', top: '58%' }, { left: '30%', top: '78%' }, { left: '65%', top: '75%' },
-    { left: '20%', top: '35%' }, { left: '82%', top: '48%' }, { left: '42%', top: '85%' },
-    { left: '58%', top: '32%' }, { left: '75%', top: '82%' },
-  ];
-  const pos = positions[idx % positions.length];
-  return (
-    <motion.button
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ delay: idx * 0.05 }}
-      className="absolute cursor-pointer group"
-      style={pos}
-      onClick={onClick}
-    >
-      <div className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-black text-white shadow-lg transition-transform group-hover:scale-125 ${darkMode ? "bg-orange-600" : "bg-orange-500"}`}>
-        {idx + 1}
-      </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded-lg px-2 py-1 whitespace-nowrap shadow-xl z-10 max-w-[160px] text-center leading-tight">
-        {event.title}
-      </div>
-    </motion.button>
-  );
-};
-
 // --- Carousel fluide infini (CSS animation translateX) ---
 const carouselStyle = `
 @keyframes gedeon-scroll {
@@ -211,6 +182,8 @@ export default function GedeonExplorer() {
   const [error, setError] = useState<string | null>(null);
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [categories, setCategories] = useState<Category[]>(["Tous"]);
+  const [currentUser, setCurrentUser] = useState<{ username: string; preferences: Record<string, unknown> } | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -235,6 +208,7 @@ export default function GedeonExplorer() {
         window.location.href = '/';
         return;
       }
+      setCurrentUser({ username: user.username, preferences: user.preferences as Record<string, unknown> });
       // Position par défaut immédiate pour ne pas bloquer le chargement
       const fallback = { lat: -18.9039, lon: 47.5169 };
       setPosition(fallback);
@@ -340,6 +314,16 @@ export default function GedeonExplorer() {
           <button onClick={toggleDark} className={`flex h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800 hover:bg-slate-700" : "bg-slate-100 hover:bg-slate-200"} transition-colors`}>
             {dm ? <Zap size={16} className="text-yellow-400 fill-yellow-400" /> : <Sun size={16} className="text-amber-500" />}
           </button>
+          {/* Avatar profil — coin haut droit du header */}
+          {currentUser && (
+            <button
+              onClick={() => setShowProfile(true)}
+              title={currentUser.username}
+              className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 active:scale-95 flex items-center justify-center text-white text-xs font-black transition-all shadow-md shrink-0"
+            >
+              {currentUser.username.split('#')[0].slice(0, 2).toUpperCase()}
+            </button>
+          )}
         </div>
       </header>
 
@@ -428,20 +412,14 @@ export default function GedeonExplorer() {
 
         {/* ===== VUE CARTE ===== */}
         {!loading && !error && viewMode === "map" && (
-          <div style={{ position: 'relative', width: '100%', borderRadius: 24, overflow: 'hidden', height: 'calc(100vh - 280px)', minHeight: 320, background: dm ? '#0f172a' : '#e2e8f0' }}>
-            <img
-              src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=1800&q=80"
-              alt="Carte"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: dm ? 0.15 : 0.3, filter: dm ? 'grayscale(1)' : 'none' }}
-              referrerPolicy="no-referrer"
+          <div style={{ position: 'relative', width: '100%', borderRadius: 24, overflow: 'hidden', height: 'calc(100vh - 280px)', minHeight: 400 }}>
+            <LeafletMap
+              events={filteredEvents}
+              position={position}
+              darkMode={dm}
+              onSelectEvent={setSelectedEvent}
             />
-            <div style={{ position: 'absolute', inset: 0, background: dm ? 'rgba(2,6,23,0.6)' : 'rgba(255,255,255,0.3)' }} />
-            <div style={{ position: 'absolute', inset: 0 }}>
-              {filteredEvents.map((event, idx) => (
-                <MapPin2 key={event.id} event={event} idx={idx} onClick={() => setSelectedEvent(event)} darkMode={dm} />
-              ))}
-            </div>
-            <div style={{ position: 'absolute', bottom: 16, left: 16, background: dm ? 'rgba(30,41,59,0.9)' : 'rgba(255,255,255,0.9)', color: dm ? '#cbd5e1' : '#334155', padding: '6px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, backdropFilter: 'blur(8px)' }}>
+            <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 1000, background: dm ? 'rgba(15,23,42,0.9)' : 'rgba(255,255,255,0.92)', color: dm ? '#cbd5e1' : '#334155', padding: '6px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, backdropFilter: 'blur(8px)', pointerEvents: 'none' }}>
               {filteredEvents.length} événement{filteredEvents.length !== 1 ? 's' : ''}
             </div>
           </div>
@@ -526,6 +504,18 @@ export default function GedeonExplorer() {
           <p className="text-xs text-slate-600">Interface de consultation des événements en temps réel</p>
         </div>
       </footer>
+
+      {/* ===== PANEL PROFIL ===== */}
+      <AnimatePresence>
+        {showProfile && currentUser && (
+          <ProfilePanel
+            user={{ username: currentUser.username, preferences: currentUser.preferences as import('./types').AuthUser['preferences'] }}
+            darkMode={dm}
+            onClose={() => setShowProfile(false)}
+            onUserUpdate={(username) => setCurrentUser(u => u ? { ...u, username } : u)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ===== MODALE DÉTAIL ===== */}
       <AnimatePresence>
