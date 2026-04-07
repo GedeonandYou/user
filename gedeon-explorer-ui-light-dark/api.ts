@@ -96,4 +96,48 @@ export function getAvailableCategories(events: EventData[]): Category[] {
   return order.filter(c => c === 'Tous' || cats.has(c))
 }
 
+export async function fetchPreferences(): Promise<AuthUser['preferences']> {
+  try {
+    const res = await fetch(`${BASE}/api/auth/preferences`, { credentials: 'include' })
+    const data = await res.json()
+    return data.preferences || {}
+  } catch {
+    return {}
+  }
+}
+
+export async function savePreferences(preferences: AuthUser['preferences']): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/api/auth/preferences`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preferences }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function updatePseudo(pseudo: string): Promise<{ ok: boolean; username?: string; error?: string }> {
+  try {
+    const res = await fetch(`${BASE}/api/auth/profile`, {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pseudo }),
+    })
+    const data = await res.json()
+    if (res.ok) return { ok: true, username: data.username }
+    return { ok: false, error: data.message || 'Erreur' }
+  } catch {
+    return { ok: false, error: 'Erreur réseau' }
+  }
+}
+
+export async function logoutUser(): Promise<void> {
+  await fetch(`${BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' })
+}
+
 export { INTEREST_TO_CATEGORY }
