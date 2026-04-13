@@ -41,7 +41,14 @@ const EventCard = ({ event, onClick, darkMode }: { event: EventData; onClick: ()
     onClick={onClick}
     className={`w-[160px] shrink-0 overflow-hidden rounded-[20px] ${darkMode ? "bg-slate-800 ring-1 ring-slate-700" : "bg-[#0F172A]"} text-white shadow-lg cursor-pointer`}
   >
-    <EventImage src={event.image} alt={event.title} className="h-28 w-full" />
+    <div className="relative">
+      <EventImage src={event.image} alt={event.title} className="h-28 w-full" />
+      {(event.relevanceScore ?? 0) > 0 && (
+        <div className="absolute top-2 right-2 rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-black text-white shadow-lg">
+          ★ Pour toi
+        </div>
+      )}
+    </div>
     <div className="p-3">
       <div className="mb-1.5 inline-flex rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/90">
         {event.badge}
@@ -209,10 +216,31 @@ export default function GedeonExplorer() {
         return;
       }
       setCurrentUser({ username: user.username, preferences: user.preferences as Record<string, unknown> });
-      // Position par défaut immédiate pour ne pas bloquer le chargement
-      const fallback = { lat: -18.9039, lon: 47.5169 };
-      setPosition(fallback);
-      // Affiner avec géoloc IP
+
+      // Appliquer la distance sauvegardée si elle existe
+      const savedDist = parseInt(String(user.preferences?.distance ?? '')) || 0;
+      if (savedDist > 0) setDistanceKm(savedDist);
+
+      // Fallback : centre France (si tout échoue)
+      const fallbackFrance = { lat: 46.603354, lon: 1.888334 };
+
+      // 1) Géolocalisation navigateur (la plus précise)
+      const browserPos = await new Promise<{ lat: number; lon: number } | null>(resolve => {
+        if (!navigator.geolocation) { resolve(null); return; }
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          ()  => resolve(null),
+          { timeout: 5000, maximumAge: 60000 }
+        );
+      });
+
+      if (browserPos) {
+        setPosition(browserPos);
+        return;
+      }
+
+      // 2) Géoloc IP comme 2e recours
+      setPosition(fallbackFrance); // pour ne pas bloquer l'affichage
       try {
         const r = await fetch('https://get.geojs.io/v1/ip/geo.json');
         const d = await r.json();
@@ -221,7 +249,7 @@ export default function GedeonExplorer() {
         if (isFinite(lat) && isFinite(lon) && (lat !== 0 || lon !== 0)) {
           setPosition({ lat, lon });
         }
-      } catch { /* garde le fallback */ }
+      } catch { /* garde le fallback France */ }
     })();
   }, []);
 

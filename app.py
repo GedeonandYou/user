@@ -118,11 +118,10 @@ INTEREST_SOURCES = {
 
 # Correspondance préférence distance → rayon km
 DISTANCE_TO_KM = {
-    '5km': 5,
-    '20km': 20,
-    '100km': 100,
-    'national': 200,
-    'international': 500,
+    # Format numérique React frontend
+    '5': 5, '10': 10, '20': 20, '30': 30, '50': 50, '100': 100, '200': 200,
+    # Format legacy
+    '5km': 5, '20km': 20, '100km': 100, 'national': 200, 'international': 500,
 }
 
 

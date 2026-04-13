@@ -12,6 +12,7 @@ export interface EventData {
   dateBegin: string     // ISO date
   dateEnd: string | null
   distanceKm: number
+  relevanceScore?: number
   source: "DATAtourisme" | "Cinema" | "Salon"
   url?: string
 }
@@ -39,6 +40,7 @@ export interface RawEvent {
   adresse?: string
   image?: string | null
   distanceKm?: number
+  relevanceScore?: number
   source?: string
   openagendaUrl?: string
   // cinéma

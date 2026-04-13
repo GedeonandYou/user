@@ -5,14 +5,20 @@ import type { AuthUser } from './types'
 import { fetchPreferences, savePreferences, updatePseudo, logoutUser } from './api'
 
 const INTERESTS = [
-  { key: 'music',      label: '🎵 Concerts' },
+  { key: 'musique',    label: '🎵 Musique & Concerts' },
   { key: 'cinema',     label: '🎬 Cinéma' },
-  { key: 'salons',     label: '🏢 Salons' },
+  { key: 'business',   label: '🏢 Salons & Expos' },
   { key: 'sport',      label: '⚽ Sports' },
-  { key: 'outdoor',    label: '🌿 Outdoor' },
-  { key: 'culture',    label: '🎨 Culture' },
-  { key: 'gastronomy', label: '🍽️ Gastronomie' },
-  { key: 'tech',       label: '💻 Tech' },
+  { key: 'nature',     label: '🌿 Nature & Outdoor' },
+  { key: 'arts',       label: '🎨 Arts & Culture' },
+  { key: 'gastro',     label: '🍽️ Gastronomie' },
+  { key: 'tech',       label: '💻 Tech & Innovation' },
+  { key: 'famille',    label: '👨‍👩‍👧 Famille & Kids' },
+  { key: 'festivals',  label: '🎪 Festivals' },
+  { key: 'patrimoine', label: '🏛️ Patrimoine' },
+  { key: 'bienetre',   label: '🧘 Bien-être' },
+  { key: 'nightlife',  label: '🌙 Nightlife' },
+  { key: 'education',  label: '📚 Éducation' },
 ]
 
 const DISTANCES = ['5', '10', '20', '30', '50', '100', '200']

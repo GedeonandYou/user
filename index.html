@@ -2440,6 +2440,23 @@
             if (dropdownPseudo) dropdownPseudo.textContent = pseudo || '';
         }
 
+        var _DISTANCES_LIST = ['5', '10', '20', '30', '50', '100', '200'];
+        var _pmSelectedDistance = '50';
+
+        function renderDistanceChips() {
+            var el = document.getElementById('pmDistanceChips');
+            if (!el) return;
+            el.innerHTML = '';
+            _DISTANCES_LIST.forEach(function(d) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = d + ' km';
+                btn.className = 'profile-chip' + (_pmSelectedDistance === d ? ' selected' : '');
+                btn.onclick = function() { _pmSelectedDistance = d; renderDistanceChips(); };
+                el.appendChild(btn);
+            });
+        }
+
         var _INTERESTS_LIST = [
             { id: "sport",      emoji: "⚽",  label: "Sport" },
             { id: "musique",    emoji: "🎵",  label: "Musique & Concerts" },
@@ -2503,7 +2520,9 @@
             var pseudo = (_currentUser && _currentUser.pseudo) ? _currentUser.pseudo.split('#')[0] : '';
             document.getElementById('pmPseudo').value = pseudo;
             _pmSelectedInterests = (prefs.interests || []).slice();
+            _pmSelectedDistance = prefs.distance || '50';
             renderProfileChips();
+            renderDistanceChips();
             document.getElementById('pmError').style.display = 'none';
             document.getElementById('profileModal').classList.add('open');
             // Close navbar dropdown
@@ -2532,6 +2551,7 @@
             var prefs = Object.assign({}, (_currentUser && _currentUser.preferences) || {}, {
                 firstName: firstName,
                 lastName: lastName,
+                distance: _pmSelectedDistance,
                 interests: _pmSelectedInterests,
             });
 
@@ -4062,7 +4082,11 @@
             <input class="profile-field-input" id="pmLastName" type="text" placeholder="Ton nom" autocomplete="family-name">
             <label class="profile-field-label">Pseudo</label>
             <input class="profile-field-input" id="pmPseudo" type="text" placeholder="Pseudo" autocomplete="off">
-            <p class="profile-section-title">Mes centres d'intérêt actifs</p>
+
+            <p class="profile-section-title" style="margin-top:18px;">Rayon de recherche par défaut</p>
+            <div class="profile-chips" id="pmDistanceChips"></div>
+
+            <p class="profile-section-title" style="margin-top:18px;">Mes centres d'intérêt actifs</p>
             <div class="profile-chips" id="pmChipsSelected"></div>
             <p id="pmNoSelected" style="color:var(--text-sub);font-size:13px;font-style:italic;margin:4px 0 0;">Aucun intérêt sélectionné</p>
             <p class="profile-section-title" style="margin-top:18px;">Ajouter des intérêts</p>
@@ -4071,6 +4095,10 @@
             <div class="profile-modal-actions">
                 <button class="profile-btn-cancel" onclick="closeProfileModal()">Annuler</button>
                 <button class="profile-btn-save" id="pmSaveBtn" onclick="saveProfile()">Enregistrer</button>
+            </div>
+            <div style="border-top:1px solid var(--border-color,#e2e8f0);margin-top:16px;padding-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+                <a href="/reset-password" style="flex:1;text-align:center;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:var(--text-sub);background:var(--card-bg,#f8fafc);text-decoration:none;border:1px solid var(--border-color,#e2e8f0);">🔑 Mot de passe</a>
+                <button onclick="doLogout()" style="flex:1;padding:9px 12px;border-radius:10px;font-size:13px;font-weight:600;color:#ef4444;background:transparent;border:1px solid #fecaca;cursor:pointer;">🚪 Déconnexion</button>
             </div>
         </div>
     </div>

@@ -2,16 +2,22 @@ import type { EventData, RawEvent, AuthUser, Category } from './types'
 
 const BASE = ''  // même origine Flask
 
-// Mapping intérêts Gedeon → catégories UI
+// Mapping intérêts Gedeon (clés backend) → catégories UI
 const INTEREST_TO_CATEGORY: Record<string, Category> = {
-  music: 'Concerts',
-  cinema: 'Films',
-  salons: 'Salons',
-  sport: 'Sports',
-  outdoor: 'Outdoor',
-  culture: 'Culture',
-  gastronomy: 'Gastronomie',
-  tech: 'Tech',
+  musique:    'Concerts',
+  cinema:     'Films',
+  business:   'Salons',
+  sport:      'Sports',
+  nature:     'Outdoor',
+  arts:       'Culture',
+  gastro:     'Gastronomie',
+  tech:       'Tech',
+  famille:    'Tous',
+  festivals:  'Concerts',
+  patrimoine: 'Culture',
+  bienetre:   'Outdoor',
+  nightlife:  'Concerts',
+  education:  'Tous',
 }
 
 // Mapping source → catégorie par défaut
@@ -60,6 +66,7 @@ export function transformEvent(raw: RawEvent): EventData {
     dateBegin,
     dateEnd,
     distanceKm: raw.distanceKm || 0,
+    relevanceScore: raw.relevanceScore,
     source: (raw.source as EventData['source']) || 'DATAtourisme',
     url: raw.openagendaUrl,
   }
