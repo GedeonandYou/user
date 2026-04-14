@@ -25,16 +25,6 @@ function markerColor(source: string) {
   return '#f97316'
 }
 
-function makeIcon(source: string) {
-  const color = markerColor(source)
-  return L.divIcon({
-    className: '',
-    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.45)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-    popupAnchor: [0, -10],
-  })
-}
 
 export default function LeafletMap({ events, position, darkMode, onSelectEvent }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -100,13 +90,18 @@ export default function LeafletMap({ events, position, darkMode, onSelectEvent }
 
     events.forEach(event => {
       const { lat, lng } = event.location
-      if (!lat && !lng) return
+      if (!lat || !lng) return
 
-      const marker = L.marker([lat, lng], { icon: makeIcon(event.source) })
+      const color = markerColor(event.source)
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 6px rgba(0,0,0,.5);cursor:pointer"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      })
 
-      // Clic direct → ouvre la modale EventDetails sans popup intermédiaire
+      const marker = L.marker([lat, lng], { icon })
       marker.on('click', () => onSelectRef.current(event))
-
       cluster.addLayer(marker)
     })
   }, [events])

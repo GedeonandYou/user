@@ -118,11 +118,10 @@ INTEREST_SOURCES = {
 
 # Correspondance préférence distance → rayon km
 DISTANCE_TO_KM = {
-    '5km': 5,
-    '20km': 20,
-    '100km': 100,
-    'national': 200,
-    'international': 500,
+    # Format numérique React frontend
+    '5': 5, '10': 10, '20': 20, '30': 30, '50': 50, '100': 100, '200': 200,
+    # Format legacy
+    '5km': 5, '20km': 20, '100km': 100, 'national': 200, 'international': 500,
 }
 
 
@@ -242,12 +241,36 @@ def score_event(event, preferences):
     description = (event.get('description') or '').lower()
     text = title + ' ' + description
     source = event.get('source', '')
+    # Catégories DATAtourisme (array postgres → liste python)
+    dt_cats = event.get('categories') or []
+    dt_cats_str = ' '.join(dt_cats).lower()
+
+    # Mapping catégories DATAtourisme → intérêts Gedeon
+    DT_CATEGORY_MAP = {
+        'musique':   ['concert', 'musicevent', 'musicfestival'],
+        'sport':     ['sportsevent', 'sportscompetition', 'sportsleisure'],
+        'arts':      ['culturalevent', 'exhibition', 'theaterperformance', 'danceperformance', 'showperformance'],
+        'festivals': ['festival', 'entertain'],
+        'gastro':    ['foodestablishment', 'wineestate', 'market'],
+        'nature':    ['naturalheritage', 'park', 'garden'],
+        'business':  ['conference', 'trade', 'businessevent'],
+        'cinema':    ['screeningevent', 'film'],
+        'education': ['educationandscience', 'workshop'],
+        'bienetre':  ['wellbeing', 'sport', 'leisuresport'],
+    }
 
     for interest in interests:
+        # Score par mots-clés titre/description
         for kw in INTEREST_KEYWORDS.get(interest, []):
             if kw in text:
                 score += 2
                 break
+        # Score par catégories DATAtourisme (bonus +3 car plus fiable que les mots-clés)
+        for cat_kw in DT_CATEGORY_MAP.get(interest, []):
+            if cat_kw in dt_cats_str:
+                score += 3
+                break
+        # Score par source
         if source in INTEREST_SOURCES.get(interest, []):
             score += 2
 
@@ -291,7 +314,7 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
             query = """
                 WITH nearby_events AS (
                     SELECT uri, nom, description, date_debut, date_fin,
-                           latitude, longitude, adresse, commune, code_postal, contacts, image, geom
+                           latitude, longitude, adresse, commune, code_postal, contacts, image, categories, geom
                     FROM evenements
                     WHERE ST_DWithin(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography, %s)
                       AND (
@@ -304,7 +327,7 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
                 SELECT uri as uid, nom as title, description,
                        date_debut as begin, date_fin as end,
                        latitude, longitude, adresse as address, commune as city,
-                       code_postal as zipcode, contacts, image,
+                       code_postal as zipcode, contacts, image, categories,
                        ST_Distance(geom::geography, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography) / 1000 as "distanceKm"
                 FROM nearby_events
                 ORDER BY "distanceKm", date_debut
@@ -319,7 +342,7 @@ def fetch_datatourisme_events(center_lat, center_lon, radius_km, days_ahead):
                 SELECT uri as uid, nom as title, description,
                        date_debut as begin, date_fin as end,
                        latitude, longitude, adresse as address, commune as city,
-                       code_postal as zipcode, contacts, image
+                       code_postal as zipcode, contacts, image, categories
                 FROM evenements
                 WHERE latitude BETWEEN %s AND %s
                   AND longitude BETWEEN %s AND %s
