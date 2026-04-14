@@ -42,6 +42,10 @@ export default function ProfilePanel({ user, darkMode: dm, onClose, onUserUpdate
   const [lastName, setLastName]       = useState(user.preferences.lastName || '')
   const [distance, setDistance]       = useState(user.preferences.distance || '50')
   const [interests, setInterests]     = useState<string[]>(user.preferences.interests || [])
+  const [cityInput, setCityInput]     = useState((user.preferences.cityName as string) || '')
+  const [cityGeocoding, setCityGeocoding] = useState(false)
+  const [cityError, setCityError]     = useState('')
+  const [cityOk, setCityOk]           = useState(false)
 
   const [pseudoSaving, setPseudoSaving] = useState(false)
   const [pseudoError, setPseudoError]   = useState('')
@@ -60,6 +64,7 @@ export default function ProfilePanel({ user, darkMode: dm, onClose, onUserUpdate
       setLastName(p.lastName || '')
       setDistance(p.distance || '50')
       setInterests(p.interests || [])
+      setCityInput((p.cityName as string) || '')
     })
   }, [])
 
@@ -86,10 +91,50 @@ export default function ProfilePanel({ user, darkMode: dm, onClose, onUserUpdate
     }
   }
 
+  async function geocodeCity() {
+    if (!cityInput.trim()) return
+    setCityGeocoding(true)
+    setCityError('')
+    setCityOk(false)
+    try {
+      const q = encodeURIComponent(cityInput.trim() + ', France')
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=fr`, {
+        headers: { 'Accept-Language': 'fr' }
+      })
+      const data = await res.json()
+      if (data.length > 0) {
+        const lat = parseFloat(data[0].lat)
+        const lon = parseFloat(data[0].lon)
+        setCityOk(true)
+        setTimeout(() => setCityOk(false), 2500)
+        return { lat, lon, cityName: cityInput.trim() }
+      } else {
+        setCityError('Ville non trouvée')
+        return null
+      }
+    } catch {
+      setCityError('Erreur de géocodage')
+      return null
+    } finally {
+      setCityGeocoding(false)
+    }
+  }
+
   async function handleSavePrefs() {
     setPrefsSaving(true)
     setPrefsOk(false)
-    const ok = await savePreferences({ ...prefs, firstName, lastName, distance, interests })
+
+    // Géocode la ville si elle a changé
+    let locationPrefs: Record<string, unknown> = {}
+    if (cityInput.trim() && cityInput.trim() !== prefs.cityName) {
+      const loc = await geocodeCity()
+      if (loc) locationPrefs = { lat: loc.lat, lon: loc.lon, cityName: loc.cityName }
+      else { setPrefsSaving(false); return }
+    } else if (cityInput.trim()) {
+      locationPrefs = { lat: prefs.lat, lon: prefs.lon, cityName: prefs.cityName }
+    }
+
+    const ok = await savePreferences({ ...prefs, firstName, lastName, distance, interests, ...locationPrefs })
     setPrefsSaving(false)
     if (ok) {
       setPrefsOk(true)
@@ -196,6 +241,23 @@ export default function ProfilePanel({ user, darkMode: dm, onClose, onUserUpdate
                 placeholder="Nom"
               />
             </div>
+          </section>
+
+          {/* ── Ma ville ── */}
+          <section>
+            <h3 className={`text-xs font-bold uppercase tracking-wider ${sub} mb-1`}>Ma ville (centre de recherche)</h3>
+            <p className={`text-xs ${sub} mb-3`}>DATAtourisme couvre uniquement la France.</p>
+            <div className="flex gap-2">
+              <input
+                value={cityInput}
+                onChange={e => { setCityInput(e.target.value); setCityError(''); setCityOk(false) }}
+                onKeyDown={e => e.key === 'Enter' && geocodeCity()}
+                className={`flex-1 rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${inp}`}
+                placeholder="Paris, Lyon, Marseille..."
+              />
+            </div>
+            {cityError && <p className="mt-1.5 text-xs text-red-400">{cityError}</p>}
+            {cityOk && <p className="mt-1.5 text-xs text-green-400">✓ Ville géocodée</p>}
           </section>
 
           {/* ── Centres d'intérêt ── */}

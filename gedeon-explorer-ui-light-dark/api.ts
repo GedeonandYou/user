@@ -20,18 +20,41 @@ const INTEREST_TO_CATEGORY: Record<string, Category> = {
   education:  'Tous',
 }
 
-// Mapping source → catégorie par défaut
+// Mapping catégories DATAtourisme → catégorie UI
+const DT_CAT_MAP: Array<[string[], Category]> = [
+  [['concert', 'musicevent', 'musicfestival'],                              'Concerts'],
+  [['screeningevent', 'film'],                                              'Films'],
+  [['trade', 'businessevent', 'conference'],                                'Salons'],
+  [['sportsevent', 'sportscompetition', 'sportsleisure'],                   'Sports'],
+  [['naturalheritage', 'park', 'garden', 'leisuresport'],                  'Outdoor'],
+  [['culturalevent', 'exhibition', 'theaterperformance', 'danceperformance', 'showperformance', 'saleevent', 'bricabrac'], 'Culture'],
+  [['foodestablishment', 'wineestate', 'market'],                           'Gastronomie'],
+  [['educationandscience', 'workshop'],                                     'Tech'],
+]
+
 function guessCategory(event: RawEvent): Category {
   const src = (event.source || '').toLowerCase()
-  const title = (event.title || '').toLowerCase()
   if (src === 'cinema') return 'Films'
-  if (src === 'salon') return 'Salons'
-  if (title.includes('concert') || title.includes('jazz') || title.includes('rock') || title.includes('electro') || title.includes('musique')) return 'Concerts'
-  if (title.includes('foot') || title.includes('marathon') || title.includes('sport') || title.includes('yoga') || title.includes('randonnée')) return 'Sports'
-  if (title.includes('randonnée') || title.includes('nature') || title.includes('outdoor')) return 'Outdoor'
-  if (title.includes('expo') || title.includes('art') || title.includes('musée') || title.includes('danse') || title.includes('théâtre') || title.includes('opéra')) return 'Culture'
-  if (title.includes('gastro') || title.includes('cuisine') || title.includes('food') || title.includes('marché')) return 'Gastronomie'
-  if (title.includes('tech') || title.includes('hackathon') || title.includes('numérique') || title.includes('digital')) return 'Tech'
+  if (src === 'salon')  return 'Salons'
+
+  // Priorité 1 : catégories DATAtourisme (plus fiables que les mots-clés)
+  const cats = (event.categories || []).join(' ').toLowerCase()
+  if (cats) {
+    for (const [keys, cat] of DT_CAT_MAP) {
+      if (keys.some(k => cats.includes(k))) return cat
+    }
+  }
+
+  // Priorité 2 : mots-clés titre
+  const title = (event.title || '').toLowerCase()
+  if (title.includes('concert') || title.includes('jazz') || title.includes('rock') || title.includes('musique') || title.includes('festival')) return 'Concerts'
+  if (title.includes('film') || title.includes('cinéma')) return 'Films'
+  if (title.includes('salon') || title.includes('foire') || title.includes('conférence')) return 'Salons'
+  if (title.includes('foot') || title.includes('rugby') || title.includes('marathon') || title.includes('sport') || title.includes('tournoi')) return 'Sports'
+  if (title.includes('randonnée') || title.includes('nature') || title.includes('plein air')) return 'Outdoor'
+  if (title.includes('expo') || title.includes('art') || title.includes('musée') || title.includes('danse') || title.includes('théâtre')) return 'Culture'
+  if (title.includes('gastro') || title.includes('cuisine') || title.includes('marché') || title.includes('dégustation')) return 'Gastronomie'
+  if (title.includes('tech') || title.includes('numérique') || title.includes('hackathon')) return 'Tech'
   return 'Tous'
 }
 

@@ -39,6 +39,7 @@ export interface RawEvent {
   address?: string
   adresse?: string
   image?: string | null
+  categories?: string[]
   distanceKm?: number
   relevanceScore?: number
   source?: string

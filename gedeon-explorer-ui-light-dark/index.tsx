@@ -221,35 +221,15 @@ export default function GedeonExplorer() {
       const savedDist = parseInt(String(user.preferences?.distance ?? '')) || 0;
       if (savedDist > 0) setDistanceKm(savedDist);
 
-      // Fallback : centre France (si tout échoue)
-      const fallbackFrance = { lat: 46.603354, lon: 1.888334 };
-
-      // 1) Géolocalisation navigateur (la plus précise)
-      const browserPos = await new Promise<{ lat: number; lon: number } | null>(resolve => {
-        if (!navigator.geolocation) { resolve(null); return; }
-        navigator.geolocation.getCurrentPosition(
-          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-          ()  => resolve(null),
-          { timeout: 5000, maximumAge: 60000 }
-        );
-      });
-
-      if (browserPos) {
-        setPosition(browserPos);
-        return;
+      // Position depuis préférences, sinon Paris par défaut
+      // (DATAtourisme couvre uniquement la France — pas de géoloc IP)
+      const prefLat = parseFloat(String((user.preferences as Record<string, unknown>)?.lat ?? ''));
+      const prefLon = parseFloat(String((user.preferences as Record<string, unknown>)?.lon ?? ''));
+      if (isFinite(prefLat) && isFinite(prefLon)) {
+        setPosition({ lat: prefLat, lon: prefLon });
+      } else {
+        setPosition({ lat: 48.8566, lon: 2.3522 }); // Paris
       }
-
-      // 2) Géoloc IP comme 2e recours
-      setPosition(fallbackFrance); // pour ne pas bloquer l'affichage
-      try {
-        const r = await fetch('https://get.geojs.io/v1/ip/geo.json');
-        const d = await r.json();
-        const lat = parseFloat(d.latitude);
-        const lon = parseFloat(d.longitude);
-        if (isFinite(lat) && isFinite(lon) && (lat !== 0 || lon !== 0)) {
-          setPosition({ lat, lon });
-        }
-      } catch { /* garde le fallback France */ }
     })();
   }, []);
 
@@ -291,67 +271,83 @@ export default function GedeonExplorer() {
     <div className={`min-h-screen w-full ${dm ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"} font-sans transition-colors duration-300`}>
 
       {/* ===== HEADER ===== */}
-      <header className={`sticky top-0 z-50 ${dm ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-slate-200"} border-b backdrop-blur-sm px-4 md:px-8 py-3 flex items-center gap-4`}>
-        {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="text-2xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
-            Gedeon
+      <header className={`sticky top-0 z-50 ${dm ? "bg-slate-900/95 border-slate-800" : "bg-white/95 border-slate-200"} border-b backdrop-blur-sm`}>
+        {/* Ligne 1 : Logo + actions */}
+        <div className="px-4 md:px-8 py-3 flex items-center gap-3">
+          {/* Logo */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-2xl font-black tracking-tight bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
+              Gedeon
+            </div>
+            <span className={`text-xs ${dm ? "text-slate-500" : "text-slate-400"} hidden md:block`}>Explorer autour de toi</span>
           </div>
-          <span className={`text-xs ${dm ? "text-slate-500" : "text-slate-400"} hidden sm:block`}>Explorer autour de toi</span>
-        </div>
 
-        {/* Search */}
-        <div className="flex-1 max-w-xl relative">
-          <div className={`flex items-center gap-2 rounded-2xl ${dm ? "bg-slate-800 ring-slate-700" : "bg-slate-100 ring-slate-200"} ring-1 px-4 py-2`}>
-            <Search size={16} className="text-slate-400 shrink-0" />
-            <input
-              ref={searchRef}
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-              placeholder="Rechercher un événement, un lieu..."
-              className={`flex-1 bg-transparent outline-none text-sm ${dm ? "text-white placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"}`}
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")}>
-                <X size={14} className="text-slate-400" />
+          {/* Search — masquée sur mobile, visible md+ */}
+          <div className="flex-1 max-w-xl relative hidden sm:block">
+            <div className={`flex items-center gap-2 rounded-2xl ${dm ? "bg-slate-800 ring-slate-700" : "bg-slate-100 ring-slate-200"} ring-1 px-4 py-2`}>
+              <Search size={16} className="text-slate-400 shrink-0" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
+                placeholder="Rechercher un événement, un lieu..."
+                className={`flex-1 bg-transparent outline-none text-sm ${dm ? "text-white placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"}`}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")}>
+                  <X size={14} className="text-slate-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setActivePot(activePot === "km" ? null : "km")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-all ${activePot === "km" ? "bg-orange-500 text-white" : dm ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}
+            >
+              <MapPin size={13} /> {distanceKm} km
+            </button>
+            <button
+              onClick={() => setActivePot(activePot === "days" ? null : "days")}
+              className={`items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-all hidden sm:flex ${activePot === "days" ? "bg-orange-500 text-white" : dm ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}
+            >
+              <Calendar size={13} /> {days}j
+            </button>
+            <button onClick={loadEvents} className={`flex h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800" : "bg-slate-100"} transition-colors`}>
+              <RefreshCw size={15} className={loading ? "animate-spin text-orange-400" : "text-slate-400"} />
+            </button>
+            <button onClick={toggleDark} className={`h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800" : "bg-slate-100"} transition-colors hidden sm:flex`}>
+              {dm ? <Zap size={16} className="text-yellow-400 fill-yellow-400" /> : <Sun size={16} className="text-amber-500" />}
+            </button>
+            {currentUser && (
+              <button
+                onClick={() => setShowProfile(true)}
+                title={currentUser.username}
+                className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 active:scale-95 flex items-center justify-center text-white text-xs font-black transition-all shadow-md shrink-0"
+              >
+                {currentUser.username.split('#')[0].slice(0, 2).toUpperCase()}
               </button>
             )}
           </div>
         </div>
 
-        {/* Filtres distance/jours */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setActivePot(activePot === "km" ? null : "km")}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-all ${activePot === "km" ? "bg-orange-500 text-white" : dm ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-          >
-            <MapPin size={13} /> {distanceKm} km
-          </button>
-          <button
-            onClick={() => setActivePot(activePot === "days" ? null : "days")}
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-all ${activePot === "days" ? "bg-orange-500 text-white" : dm ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-          >
-            <Calendar size={13} /> {days}j
-          </button>
-          <button onClick={loadEvents} className={`flex h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800 hover:bg-slate-700" : "bg-slate-100 hover:bg-slate-200"} transition-colors`}>
-            <RefreshCw size={15} className={loading ? "animate-spin text-orange-400" : "text-slate-400"} />
-          </button>
-          <button onClick={toggleDark} className={`flex h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800 hover:bg-slate-700" : "bg-slate-100 hover:bg-slate-200"} transition-colors`}>
-            {dm ? <Zap size={16} className="text-yellow-400 fill-yellow-400" /> : <Sun size={16} className="text-amber-500" />}
-          </button>
-          {/* Avatar profil — coin haut droit du header */}
-          {currentUser && (
-            <button
-              onClick={() => setShowProfile(true)}
-              title={currentUser.username}
-              className="h-9 w-9 rounded-full bg-orange-500 hover:bg-orange-600 active:scale-95 flex items-center justify-center text-white text-xs font-black transition-all shadow-md shrink-0"
-            >
-              {currentUser.username.split('#')[0].slice(0, 2).toUpperCase()}
-            </button>
-          )}
+        {/* Ligne 2 mobile uniquement : search bar pleine largeur */}
+        <div className="sm:hidden px-4 pb-3">
+          <div className={`flex items-center gap-2 rounded-2xl ${dm ? "bg-slate-800 ring-slate-700" : "bg-slate-100 ring-slate-200"} ring-1 px-4 py-2`}>
+            <Search size={16} className="text-slate-400 shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un événement, un lieu..."
+              className={`flex-1 bg-transparent outline-none text-sm ${dm ? "text-white placeholder:text-slate-500" : "text-slate-800 placeholder:text-slate-400"}`}
+            />
+            {searchQuery && <button onClick={() => setSearchQuery("")}><X size={14} className="text-slate-400" /></button>}
+          </div>
         </div>
       </header>
 
@@ -440,7 +436,7 @@ export default function GedeonExplorer() {
 
         {/* ===== VUE CARTE ===== */}
         {!loading && !error && viewMode === "map" && (
-          <div style={{ position: 'relative', width: '100%', borderRadius: 24, overflow: 'hidden', height: 'calc(100vh - 280px)', minHeight: 400 }}>
+          <div style={{ position: 'relative', width: '100%', borderRadius: 16, overflow: 'hidden', height: 'clamp(320px, calc(100vh - 260px), 700px)' }}>
             <LeafletMap
               events={filteredEvents}
               position={position}
