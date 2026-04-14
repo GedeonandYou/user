@@ -305,22 +305,29 @@ export default function GedeonExplorer() {
           </div>
 
           <div className="ml-auto flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setActivePot(activePot === "km" ? null : "km")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-all ${activePot === "km" ? "bg-orange-500 text-white" : dm ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}
-            >
-              <MapPin size={13} /> {distanceKm} km
-            </button>
-            <button
-              onClick={() => setActivePot(activePot === "days" ? null : "days")}
-              className={`items-center gap-1.5 rounded-xl px-3 py-1.5 text-sm font-semibold transition-all hidden sm:flex ${activePot === "days" ? "bg-orange-500 text-white" : dm ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}
-            >
-              <Calendar size={13} /> {days}j
-            </button>
+            {/* Pill filtre maquette : km | · | jours */}
+            <div className={`flex items-center rounded-2xl ring-1 ${dm ? "bg-slate-800 ring-slate-700" : "bg-white ring-slate-200"} shadow-sm overflow-hidden`}>
+              <button
+                onClick={() => setActivePot(activePot === "km" ? null : "km")}
+                className={`flex items-center gap-1 px-3 py-2 text-[13px] font-semibold transition-colors ${activePot === "km" ? "text-orange-500" : dm ? "text-slate-300" : "text-slate-700"}`}
+              >
+                <MapPin size={12} className={activePot === "km" ? "text-orange-500" : "text-slate-400"} />
+                {distanceKm} km
+              </button>
+              <span className={`text-xs font-bold px-1 ${dm ? "text-slate-600" : "text-slate-300"}`}>|</span>
+              <button
+                onClick={() => setActivePot(activePot === "days" ? null : "days")}
+                className={`flex items-center gap-1 px-3 py-2 text-[13px] font-semibold transition-colors ${activePot === "days" ? "text-orange-500" : dm ? "text-slate-300" : "text-slate-700"}`}
+              >
+                <Calendar size={12} className={activePot === "days" ? "text-orange-500" : "text-slate-400"} />
+                {days}j
+              </button>
+            </div>
+
             <button onClick={loadEvents} className={`flex h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800" : "bg-slate-100"} transition-colors`}>
               <RefreshCw size={15} className={loading ? "animate-spin text-orange-400" : "text-slate-400"} />
             </button>
-            <button onClick={toggleDark} className={`h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800" : "bg-slate-100"} transition-colors hidden sm:flex`}>
+            <button onClick={toggleDark} className={`hidden sm:flex h-9 w-9 items-center justify-center rounded-xl ${dm ? "bg-slate-800" : "bg-slate-100"} transition-colors`}>
               {dm ? <Zap size={16} className="text-yellow-400 fill-yellow-400" /> : <Sun size={16} className="text-amber-500" />}
             </button>
             {currentUser && (
@@ -353,27 +360,51 @@ export default function GedeonExplorer() {
 
       {/* ===== SLIDER POTENTIOMÈTRE ===== */}
       <AnimatePresence>
+        {/* Potentiomètre vertical flottant — gauche = km, droite = jours */}
         {activePot && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className={`${dm ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"} border-b px-4 md:px-8 py-4 flex items-center gap-6 overflow-hidden`}
+            initial={{ opacity: 0, x: activePot === "km" ? -20 : 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: activePot === "km" ? -20 : 20 }}
+            className={`fixed flex flex-col items-center gap-2 ${activePot === "km" ? "left-4" : "right-4"}`}
+            style={{ top: 120, zIndex: 99999 }}
           >
-            <span className={`text-sm font-semibold ${dm ? "text-slate-300" : "text-slate-700"} shrink-0`}>
-              {activePot === "km" ? `Distance : ${distanceKm} km` : `Période : ${days} jours`}
-            </span>
-            <input
-              type="range" min="0" max="100" step="0.5"
-              value={activePot === "km" ? distToPct(distanceKm) : daysToPct(days)}
-              onChange={e => {
-                const p = parseFloat(e.target.value);
-                if (activePot === "km") setDistanceKm(pctToDist(p));
-                else setDays(pctToDays(p));
-              }}
-              className="flex-1 max-w-xs accent-orange-500"
-            />
-            <button onClick={() => setActivePot(null)} className={`text-xs ${dm ? "text-slate-400 hover:text-white" : "text-slate-500 hover:text-slate-900"}`}>Fermer</button>
+            <div className={`relative flex h-64 w-12 flex-col items-center rounded-full py-4 shadow-2xl ring-1 backdrop-blur-md ${dm ? "bg-slate-800/95 ring-slate-700" : "bg-white/95 ring-slate-200"}`}>
+              {/* Valeur actuelle */}
+              <div className={`absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-bold shadow-lg ${dm ? "bg-white text-slate-900" : "bg-slate-900 text-white"}`}>
+                {activePot === "km" ? `${distanceKm} KM` : `${days} J`}
+              </div>
+
+              {/* Slider vertical */}
+              <input
+                type="range" min="0" max="100" step="0.5"
+                value={activePot === "km" ? distToPct(distanceKm) : daysToPct(days)}
+                onChange={e => {
+                  const p = parseFloat(e.target.value);
+                  if (activePot === "km") setDistanceKm(pctToDist(p));
+                  else setDays(pctToDays(p));
+                }}
+                className="accent-orange-500"
+                style={{
+                  writingMode: "vertical-lr",
+                  direction: "rtl",
+                  width: 4,
+                  height: 160,
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  cursor: "pointer",
+                  accentColor: '#f97316',
+                }}
+              />
+
+              {/* Bouton fermer */}
+              <button
+                onClick={() => setActivePot(null)}
+                className={`mt-2 flex h-7 w-7 items-center justify-center rounded-full transition-colors ${dm ? "text-slate-400 hover:bg-slate-700 hover:text-white" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
